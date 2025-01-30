@@ -58,7 +58,7 @@ def test_daily_rota_odd_week(freezer):
         },
         {
             "text": {
-                "text": "Monday: Jon (backup: Mike)",
+                "text": "Monday: <@U023ZG5H24R> (backup: Mike)",
                 "type": "mrkdwn",
             },
             "type": "section",
@@ -77,7 +77,7 @@ def test_daily_rota_even_week(freezer):
         },
         {
             "text": {
-                "text": "Wednesday: Mary (backup: Steve)",
+                "text": "Wednesday: <@U07LKQ06Q8L> (backup: Steve)",
                 "type": "mrkdwn",
             },
             "type": "section",

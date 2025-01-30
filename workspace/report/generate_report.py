@@ -5,10 +5,7 @@ import os
 import requests
 
 from workspace.utils.blocks import get_basic_header_and_text_blocks
-from workspace.utils.people import (
-    get_formatted_slack_username,
-    get_person_from_github_username,
-)
+from workspace.utils.people import People
 
 
 URL = "https://api.github.com/graphql"
@@ -174,7 +171,7 @@ def get_status_and_summary(card):  # pragma: no cover
     title = card["content"]["title"]
     url = card["content"].get("bodyUrl")
     assignees = " / ".join(
-        get_formatted_slack_username(get_person_from_github_username(node["login"]))
+        People.get_formatted_slack_username_from_github_username(node["login"])
         for node in card["content"]["assignees"]["nodes"]
     )
 
