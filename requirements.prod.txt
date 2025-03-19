@@ -281,9 +281,9 @@ environs==14.1.1 \
     --hash=sha256:03db7ee2d50ec697b68814cd175a3a05a7c7954804e4e419ca8b570dc5a835cf \
     --hash=sha256:45bc56f1d53bbc59d8dd69bba97377dd88ec28b8229d81cedbd455b21789445b
     # via -r requirements.prod.in
-fab-classic==1.19.2 \
-    --hash=sha256:8edfd97ff58ca616cdd6e77bc42d3f71d27842197f13771c77cf0b553f3b4311 \
-    --hash=sha256:927e492dd350854a03cf3cde22ceabfcb0deb18ec1c9ce111e9acd9bee511458
+fab-classic==1.20.0 \
+    --hash=sha256:c9813945baebb05904d40ffc299df0d686d9120ec50ff2ba4264be982874bf8e \
+    --hash=sha256:e57924053b09e063fcef598ecb49b5e7cff917845afb4ebff951fb939fb38a18
     # via -r requirements.prod.in
 flask==3.1.0 \
     --hash=sha256:5f873c5184c897c8d9d1b05df1e3d01b14910ce69607a117bd3277098a5836ac \
@@ -293,9 +293,9 @@ google-api-core==2.24.2 \
     --hash=sha256:810a63ac95f3c441b7c0e43d344e372887f62ce9071ba972eacf32672e072de9 \
     --hash=sha256:81718493daf06d96d6bc76a91c23874dbf2fac0adbbf542831b805ee6e974696
     # via google-api-python-client
-google-api-python-client==2.163.0 \
-    --hash=sha256:080e8bc0669cb4c1fb8efb8da2f5b91a2625d8f0e7796cfad978f33f7016c6c4 \
-    --hash=sha256:88dee87553a2d82176e2224648bf89272d536c8f04dcdda37ef0a71473886dd7
+google-api-python-client==2.164.0 \
+    --hash=sha256:116f5a05dfb95ed7f7ea0d0f561fc5464146709c583226cc814690f9bb221492 \
+    --hash=sha256:b2037c3d280793c8d5180b04317b16be4acd5f77af5dfa7213ace32d140a9ffe
     # via -r requirements.prod.in
 google-auth==2.38.0 \
     --hash=sha256:8285113607d3b80a3f1543b75962447ba8a09fe85783432a784fdeef6ac094c4 \
@@ -308,9 +308,9 @@ google-auth-httplib2==0.2.0 \
     --hash=sha256:38aa7badf48f974f1eb9861794e9c0cb2a0511a4ec0679b1f886d108f5640e05 \
     --hash=sha256:b65a0a2123300dd71281a7bf6e64d65a0759287df52729bdd1ae2e47dc311a3d
     # via google-api-python-client
-googleapis-common-protos==1.69.1 \
-    --hash=sha256:4077f27a6900d5946ee5a369fab9c8ded4c0ef1c6e880458ea2f70c14f7b70d5 \
-    --hash=sha256:e20d2d8dda87da6fe7340afbbdf4f0bcb4c8fae7e6cadf55926c31f946b0b9b1
+googleapis-common-protos==1.69.2 \
+    --hash=sha256:0b30452ff9c7a27d80bfc5718954063e8ab53dd3697093d3bc99581f5fd24212 \
+    --hash=sha256:3e1b904a27a33c821b4b749fd31d334c0c9c30e6113023d495e48979a3dc9c5f
     # via google-api-core
 gunicorn==23.0.0 \
     --hash=sha256:ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d \
@@ -409,26 +409,24 @@ packaging==24.2 \
     # via
     #   gunicorn
     #   marshmallow
-paramiko-ng==2.8.10 \
-    --hash=sha256:29751590f293e75ee868dc52fa98d5c54047eafebc9568d4930b70872183fbf6 \
-    --hash=sha256:c60f1ea62197fa00eee856b7c4bfb39ceb8ac8fdd86a9d4eb37711d14aabeca1
+paramiko-ng==2.9.0 \
+    --hash=sha256:79b86c9773fb5ecc9d3654f9559e4bbfc16130257c840852e4174ecfe62f9606 \
+    --hash=sha256:f8ea035543296f97bc3066e806901d64ee77e3565267aef7d35579f282debe5c
     # via fab-classic
 proto-plus==1.26.1 \
     --hash=sha256:13285478c2dcf2abb829db158e1047e2f1e8d63a077d94263c2b88b043c75a66 \
     --hash=sha256:21a515a4c4c0088a773899e23c7bbade3d18f9c66c73edd4c7ee3816bc96a012
     # via google-api-core
-protobuf==5.29.3 \
-    --hash=sha256:0a18ed4a24198528f2333802eb075e59dea9d679ab7a6c5efb017a59004d849f \
-    --hash=sha256:0eb32bfa5219fc8d4111803e9a690658aa2e6366384fd0851064b963b6d1f2a7 \
-    --hash=sha256:3ea51771449e1035f26069c4c7fd51fba990d07bc55ba80701c78f886bf9c888 \
-    --hash=sha256:5da0f41edaf117bde316404bad1a486cb4ededf8e4a54891296f648e8e076620 \
-    --hash=sha256:6ce8cc3389a20693bfde6c6562e03474c40851b44975c9b2bf6df7d8c4f864da \
-    --hash=sha256:84a57163a0ccef3f96e4b6a20516cedcf5bb3a95a657131c5c3ac62200d23252 \
-    --hash=sha256:a4fa6f80816a9a0678429e84973f2f98cbc218cca434abe8db2ad0bffc98503a \
-    --hash=sha256:a8434404bbf139aa9e1300dbf989667a83d42ddda9153d8ab76e0d5dcaca484e \
-    --hash=sha256:b89c115d877892a512f79a8114564fb435943b59067615894c3b13cd3e1fa107 \
-    --hash=sha256:c027e08a08be10b67c06bf2370b99c811c466398c357e615ca88c91c07f0910f \
-    --hash=sha256:daaf63f70f25e8689c072cfad4334ca0ac1d1e05a92fc15c54eb9cf23c3efd84
+protobuf==6.30.1 \
+    --hash=sha256:3c25e51e1359f1f5fa3b298faa6016e650d148f214db2e47671131b9063c53be \
+    --hash=sha256:47cd320b7db63e8c9ac35f5596ea1c1e61491d8a8eb6d8b45edc44760b53a4f6 \
+    --hash=sha256:535fb4e44d0236893d5cf1263a0f706f1160b689a7ab962e9da8a9ce4050b780 \
+    --hash=sha256:554d7e61cce2aa4c63ca27328f757a9f3867bce8ec213bf09096a8d16bcdcb6a \
+    --hash=sha256:aa4f7dfaed0d840b03d08d14bfdb41348feaee06a828a8c455698234135b4075 \
+    --hash=sha256:b510f55ce60f84dc7febc619b47215b900466e3555ab8cb1ba42deb4496d6cc0 \
+    --hash=sha256:ba0706f948d0195f5cac504da156d88174e03218d9364ab40d903788c1903d7e \
+    --hash=sha256:e3083660225fa94748ac2e407f09a899e6a28bf9c0e70c75def8d15706bf85fc \
+    --hash=sha256:ed484f9ddd47f0f1bf0648806cccdb4fe2fb6b19820f9b79a5adf5dcfd1b8c5f
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -465,17 +463,13 @@ rsa==4.9 \
     --hash=sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7 \
     --hash=sha256:e38464a49c6c85d7f1351b0126661487a7e0a14a50f1675ec50eb34d4f20ef21
     # via google-auth
-six==1.17.0 \
-    --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
-    --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
-    # via fab-classic
 slack-bolt==1.22.0 \
     --hash=sha256:349097136a586617e5fb71f40f58a30fa847f664c598577f67a01f99faa1a9eb \
     --hash=sha256:b9c66d088fe3ec8bdd0494278eb500fe58092c2941de86d6822d00f4b3c7c88b
     # via -r requirements.prod.in
-slack-sdk==3.34.0 \
-    --hash=sha256:c61f57f310d85be83466db5a98ab6ae3bb2e5587437b54fa0daa8fae6a0feffa \
-    --hash=sha256:ff61db7012160eed742285ea91f11c72b7a38a6500a7f6c5335662b4bc6b853d
+slack-sdk==3.35.0 \
+    --hash=sha256:00933d171fbd8a068b321ebb5f89612cc781d3183d8e3447c85499eca9d865be \
+    --hash=sha256:8183b6cbf26a0c1e2441478cd9c0dc4eef08d60c1394cfdc9a769e309a9b6459
     # via slack-bolt
 structlog==25.2.0 \
     --hash=sha256:0fecea2e345d5d491b72f3db2e5fcd6393abfc8cd06a4851f21fcd4d1a99f437 \
