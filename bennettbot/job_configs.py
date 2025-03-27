@@ -83,7 +83,7 @@ raw_config = {
     "fdaaa": {
         "restricted": True,
         "description": "Trials Tracker (https://fdaaa.trialstracker.net)",
-        "fabfile": "https://raw.githubusercontent.com/ebmdatalab/clinicaltrials-act-tracker/master/fabfile.py",
+        "fabfile": "https://raw.githubusercontent.com/ebmdatalab/clinicaltrials-act-tracker/main/fabfile.py",
         "jobs": {
             "deploy": {
                 "run_args_template": "fab update:live",
