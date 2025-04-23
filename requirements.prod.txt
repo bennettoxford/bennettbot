@@ -399,16 +399,14 @@ markupsafe==3.0.2 \
     # via
     #   jinja2
     #   werkzeug
-marshmallow==3.26.1 \
-    --hash=sha256:3350409f20a70a7e4e11a27661187b77cdcaeb20abca41c1454fe33636bea09c \
-    --hash=sha256:e6d8affb6cb61d39d26402096dc0aee12d5a26d490a121f118d2e81dc0719dc6
+marshmallow==4.0.0 \
+    --hash=sha256:3b6e80aac299a7935cfb97ed01d1854fb90b5079430969af92118ea1b12a8d55 \
+    --hash=sha256:e7b0528337e9990fd64950f8a6b3a1baabed09ad17a0dfb844d701151f92d203
     # via environs
-packaging==24.2 \
-    --hash=sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759 \
-    --hash=sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f
-    # via
-    #   gunicorn
-    #   marshmallow
+packaging==25.0 \
+    --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484 \
+    --hash=sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f
+    # via gunicorn
 paramiko-ng==2.9.0 \
     --hash=sha256:79b86c9773fb5ecc9d3654f9559e4bbfc16130257c840852e4174ecfe62f9606 \
     --hash=sha256:f8ea035543296f97bc3066e806901d64ee77e3565267aef7d35579f282debe5c
@@ -459,9 +457,9 @@ requests==2.32.3 \
     # via
     #   -r requirements.prod.in
     #   google-api-core
-rsa==4.9 \
-    --hash=sha256:90260d9058e514786967344d0ef75fa8727eed8a7d2e43ce9f4bcf1b536174f7 \
-    --hash=sha256:e38464a49c6c85d7f1351b0126661487a7e0a14a50f1675ec50eb34d4f20ef21
+rsa==4.9.1 \
+    --hash=sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762 \
+    --hash=sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75
     # via google-auth
 slack-bolt==1.23.0 \
     --hash=sha256:3d2c3eb13131407a94f925eb22b180d352c2d97b808303ef92b7a46d6508c843 \
