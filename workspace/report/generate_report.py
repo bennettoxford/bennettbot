@@ -25,8 +25,8 @@ def post_request(payload):  # pragma: no cover
     return rsp.json()
 
 
-def main(project_num, statuses):
-    project_id = get_project_id(int(project_num))
+def main(project_num, statuses, org=ORG_NAME):
+    project_id = get_project_id(int(project_num), org)
     cards = get_project_cards(project_id)
     tickets_by_status = {status: [] for status in statuses}
 
@@ -37,7 +37,7 @@ def main(project_num, statuses):
 
     report_output = get_basic_header_and_text_blocks(
         header_text=":newspaper: Project Board Summary :newspaper:",
-        texts=f"<https://github.com/orgs/opensafely-core/projects/{project_num}/views/1|View board>",
+        texts=f"<https://github.com/orgs/{org}/projects/{project_num}/views/1|View board>",
     )
 
     for status, tickets in tickets_by_status.items():
@@ -60,7 +60,7 @@ def main(project_num, statuses):
     return json.dumps(report_output)
 
 
-def get_project_id(project_num):
+def get_project_id(project_num, org):
     query = """
     query projectId($org_name: String!, $project_num: Int!) {
       organization(login: $org_name) {
@@ -72,7 +72,7 @@ def get_project_id(project_num):
     }
     """
     variables = {
-        "org_name": ORG_NAME,
+        "org_name": org,
         "project_num": project_num,
     }
 
@@ -188,7 +188,8 @@ def get_status_and_summary(card):  # pragma: no cover
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project-num", help="The GitHub Project number", type=int)
+    parser.add_argument("--project-num", type=int, help="The GitHub Project number")
     parser.add_argument("--statuses", nargs="+", help="List of GitHub Project statuses")
+    parser.add_argument("--org", default=ORG_NAME, help="GitHub organization name")
     args = parser.parse_args()
-    print(main(args.project_num, args.statuses))
+    print(main(args.project_num, args.statuses, args.org))
