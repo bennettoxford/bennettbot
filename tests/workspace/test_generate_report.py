@@ -132,7 +132,9 @@ def test_generate_report_with_custom_org():
         },
     ]
 
-    assert generate_report.main(99, ["Backlog"], org="custom-org") == json.dumps(response)
+    assert generate_report.main(99, ["Backlog"], org="custom-org") == json.dumps(
+        response
+    )
 
 
 def test_generate_report_no_issues():
