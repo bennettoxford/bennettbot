@@ -27,7 +27,7 @@ def post_request(payload):  # pragma: no cover
 
 def main(project_num, statuses, org=ORG_NAME):
     project_id = get_project_id(int(project_num), org)
-    cards = get_project_cards(project_id)
+    cards = get_project_cards(project_id, org)
     tickets_by_status = {status: [] for status in statuses}
 
     for card in cards:  # pragma: no cover
@@ -81,7 +81,7 @@ def get_project_id(project_num, org):
     return rsp["data"]["organization"]["projectV2"]["id"]
 
 
-def get_project_cards(project_id):
+def get_project_cards(project_id, org):
     query = """
     query projectCards($project_id: ID!, $cursor: String) {
       node(id: $project_id) {
@@ -141,7 +141,7 @@ def get_project_cards(project_id):
     cursor = None
     project_data = []
     while True:
-        variables = {"project_id": project_id, "cursor": cursor}
+        variables = {"project_id": project_id, "cursor": cursor, "org_name": org}
         payload = {"query": query, "variables": variables}
         data = post_request(payload)
         node_data = data["data"]["node"]["items"]
