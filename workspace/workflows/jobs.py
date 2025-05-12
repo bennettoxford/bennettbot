@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import requests
 
 from bennettbot import settings
+from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
     get_basic_header_and_text_blocks,
     get_header_block,
@@ -417,10 +418,6 @@ def get_usage_text(args) -> str:
 
 
 def get_command_line_parser():
-    class SplitString(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            setattr(namespace, self.dest, values.split())
-
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(required=True)
 
