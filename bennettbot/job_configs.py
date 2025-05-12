@@ -286,12 +286,12 @@ raw_config = {
                 "report_format": "blocks",
             },
             "run_rap_report": {
-                "run_args_template": "python generate_report.py --project-num 15 --statuses 'Under Review' 'Blocked' 'In Progress'",
+                "run_args_template": "python generate_report.py --project-num 15 --statuses 'Under Review,Blocked,In Progress'",
                 "report_stdout": True,
                 "report_format": "blocks",
             },
             "run_rex_report": {
-                "run_args_template": "python generate_report.py --project-num 14 --statuses 'In Progress' 'In Review' 'Blocked'",
+                "run_args_template": "python generate_report.py --project-num 14 --statuses 'In Progress,In Review,Blocked'",
                 "report_stdout": True,
                 "report_format": "blocks",
             },

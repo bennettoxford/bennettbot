@@ -4,6 +4,7 @@ import os
 
 import requests
 
+from workspace.utils.argparse import SplitCommaSeparatedString
 from workspace.utils.blocks import get_basic_header_and_text_blocks
 from workspace.utils.people import People
 
@@ -189,6 +190,11 @@ def get_status_and_summary(card):  # pragma: no cover
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-num", help="The GitHub Project number", type=int)
-    parser.add_argument("--statuses", nargs="+", help="List of GitHub Project statuses")
+    parser.add_argument(
+        "--statuses",
+        type=str,
+        action=SplitCommaSeparatedString,
+        help="List of GitHub Project statuses",
+    )
     args = parser.parse_args()
     print(main(args.project_num, args.statuses))
