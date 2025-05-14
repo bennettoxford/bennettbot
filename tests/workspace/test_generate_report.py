@@ -97,6 +97,46 @@ def test_generate_report():
     assert generate_report.main(13, statuses) == json.dumps(response)
 
 
+def test_generate_report_with_custom_org():
+    def mock_post_request(payload):
+        # Verify the org parameter is passed to the query
+        assert payload["variables"]["org_name"] == "custom-org"
+        return {
+            "data": {
+                "organization": {"projectV2": {"id": 1}},
+                "node": {
+                    "items": {
+                        "nodes": [],
+                        "pageInfo": {"hasNextPage": False, "endCursor": "abc"},
+                    }
+                },
+            }
+        }
+
+    generate_report.post_request = mock_post_request
+
+    response = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": ":newspaper: Project Board Summary :newspaper:",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "<https://github.com/orgs/custom-org/projects/99/views/1|View board>",
+            },
+        },
+    ]
+
+    assert generate_report.main(99, ["Backlog"], org="custom-org") == json.dumps(
+        response
+    )
+
+
 def test_generate_report_no_issues():
     def mock_post_request(payload):
         return {

@@ -1,10 +1,3 @@
-SHORTHANDS = {
-    "os": "opensafely",
-    "osc": "opensafely-core",
-    "ebm": "ebmdatalab",
-    "bo": "bennettoxford",
-}
-
 TEAMS = [
     "Tech shared",
     "Team REX",
