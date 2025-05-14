@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import requests
 
 from bennettbot import settings
+from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
     get_basic_header_and_text_blocks,
@@ -364,8 +365,8 @@ def _main(targets: list[str], skip_successful: bool) -> str:
         else:  # Assume target is an org
             org, repo = target, None
 
-        org = config.SHORTHANDS.get(org, org)
-        if org not in config.SHORTHANDS.values():
+        org = shorthands.ORGS.get(org, org)
+        if org not in shorthands.ORGS.values():
             return report_invalid_target(target)
         if repo:
             locations.append(f"{org}/{repo}")
@@ -398,7 +399,7 @@ def get_text_blocks_for_key(args) -> str:
 
 
 def get_usage_text(args) -> str:
-    orgs = ", ".join([f"`{k} ({v})`" for k, v in config.SHORTHANDS.items()])
+    orgs = ", ".join([f"`{k} ({v})`" for k, v in shorthands.ORGS.items()])
     return "\n".join(
         [
             "Usage for `show [target]` (The behaviour for `show-failed [target]` is the same, but skips repos whose workflows are all successful):",

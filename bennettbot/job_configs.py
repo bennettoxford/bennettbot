@@ -278,10 +278,11 @@ raw_config = {
         ],
     },
     "report": {
+        "restricted": True,
         "description": "Run GitHub Project board reports",
         "jobs": {
             "run_report": {
-                "run_args_template": "python generate_report.py --project-num {project_number} --statuses {statuses}",
+                "run_args_template": "python generate_report.py --project-num {project_number} --statuses {statuses} --org {org}",
                 "report_stdout": True,
                 "report_format": "blocks",
             },
@@ -298,7 +299,7 @@ raw_config = {
         },
         "slack": [
             {
-                "command": "board [project_number] [statuses]",
+                "command": "board [org] [project_number] [statuses]",
                 "help": "Report GitHub project board. Provide multiple statuses separated by commas.",
                 "action": "schedule_job",
                 "job_type": "run_report",
