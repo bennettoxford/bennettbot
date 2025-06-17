@@ -25,10 +25,6 @@ REPOS = {
         "org": "bennettoxford",
         "team": "Team RAP",
     },
-    "cohort-extractor": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
     "documentation": {
         "org": "opensafely",
         "team": "Tech shared",
@@ -104,9 +100,6 @@ IGNORED_WORKFLOWS = {
     ],
     "opensafely-core/airlock": [
         94122733,  # [Ignored on main, PR#277] Docs
-    ],
-    "opensafely-core/cohort-extractor": [
-        13520184,  # [On workflow dispatch] Check Trino version on EMIS and in docker-compose.yml match
     ],
     "opensafely-core/job-runner": [
         26915901,  # [On workflow call] Add software bill of materials to release (reusable)
