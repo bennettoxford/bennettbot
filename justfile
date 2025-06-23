@@ -136,3 +136,7 @@ fix: devenv
 # Run the dev project
 run SERVICE: devenv
     $BIN/python -m bennettbot.{{ SERVICE }}
+
+# Run a command locally without Slack integration
+cmd NAMESPACE *ARGS: devenv
+    $BIN/python -m workspace.{{ NAMESPACE }}.jobs {{ ARGS }}
