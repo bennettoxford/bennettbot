@@ -398,10 +398,45 @@ def get_text_blocks_for_key(args) -> str:
     return json.dumps(blocks)
 
 
+def get_workflow_runs_history(org, repo, max_runs=100):
+    runs = []
+    url = f"https://api.github.com/repos/{org}/{repo}/actions/runs"
+    params = {"branch": "main", "per_page": 100}
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+
+    while url and len(runs) < max_runs:
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        page_runs = data["workflow_runs"]
+        runs.extend(page_runs)
+
+        # Parse Link header for next page URL
+        links = requests.utils.parse_header_links(response.headers.get("Link", ""))
+        next_url = None
+
+        for link in links:
+            if link.get("rel") == "next":
+                next_url = link["url"]
+                break
+
+        url = next_url
+
+    return runs[:max_runs]
+
+
 def get_workflow_history(args) -> str:
+    # Get the first repo from the config
+    repo_name, repo = next(iter(config.REPOS.items()))
+    org = repo["org"]
+
+    # Get workflow runs history
+    runs = get_workflow_runs_history(org, repo_name, max_runs=1000)
+
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
-        texts="This is a placeholder for workflow history functionality."
+        texts=f"First repo: {org}/{repo_name}\nNumber of workflow runs: {len(runs)}",
     )
     return json.dumps(blocks)
 
