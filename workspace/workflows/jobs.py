@@ -7,6 +7,15 @@ from urllib.parse import urljoin
 
 import requests
 
+# Enable caching for local development
+if os.environ.get("ENABLE_HTTP_CACHE"):
+    import requests_cache
+    requests_cache.install_cache(
+        cache_name="github_api_cache",
+        backend="sqlite",
+        expire_after=60 * 60 * 24,  # 1 day
+    )
+
 from bennettbot import settings
 from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString

@@ -10,6 +10,8 @@ writeable_dir/
 *techsupport_ooo.json
 logs
 *workflows_cache.json
+# HTTP cache files
+*_cache.sqlite
 # startup check file, used as a dokku healthcheck
 .bot_startup_check
 
