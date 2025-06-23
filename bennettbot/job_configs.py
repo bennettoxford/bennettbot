@@ -356,6 +356,11 @@ raw_config = {
                 "report_stdout": True,
                 "report_format": "blocks",
             },
+            "history": {
+                "run_args_template": "python jobs.py history",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
         },
         "slack": [
             {
@@ -399,6 +404,12 @@ raw_config = {
                 "help": "Summarise GitHub Actions workflow runs for a custom defined group of workflows.",
                 "action": "schedule_job",
                 "job_type": "show_group",
+            },
+            {
+                "command": "history",
+                "help": "Show workflow history across all repositories.",
+                "action": "schedule_job",
+                "job_type": "history",
             },
         ]
     },

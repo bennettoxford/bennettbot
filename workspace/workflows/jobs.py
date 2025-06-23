@@ -398,6 +398,14 @@ def get_text_blocks_for_key(args) -> str:
     return json.dumps(blocks)
 
 
+def get_workflow_history(args) -> str:
+    blocks = get_basic_header_and_text_blocks(
+        header_text="Workflow History",
+        texts="This is a placeholder for workflow history functionality."
+    )
+    return json.dumps(blocks)
+
+
 def get_usage_text(args) -> str:
     orgs = ", ".join([f"`{k} ({v})`" for k, v in shorthands.ORGS.items()])
     return "\n".join(
@@ -433,6 +441,10 @@ def get_command_line_parser():
     show_parser.add_argument("--group", required=False)
     show_parser.add_argument("--skip-successful", action="store_true", default=False)
     show_parser.set_defaults(func=main)
+
+    # History task: show workflow history
+    history_parser = subparsers.add_parser("history")
+    history_parser.set_defaults(func=get_workflow_history)
 
     # Display key
     key_parser = subparsers.add_parser("key")
