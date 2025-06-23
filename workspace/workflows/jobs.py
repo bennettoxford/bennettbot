@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
 import requests
@@ -398,32 +398,40 @@ def get_text_blocks_for_key(args) -> str:
     return json.dumps(blocks)
 
 
-def get_workflow_runs_history(org, repo, max_runs=100):
+def get_workflow_runs_history(org, repo, days=90):
     runs = []
     url = f"https://api.github.com/repos/{org}/{repo}/actions/runs"
     params = {"branch": "main", "per_page": 100}
     headers = {"Authorization": f"Bearer {TOKEN}"}
 
-    while url and len(runs) < max_runs:
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    while url:
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         data = response.json()
 
         page_runs = data["workflow_runs"]
-        runs.extend(page_runs)
+
+        # Filter runs by date and add to results
+        for run in page_runs:
+            run_date = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+            if run_date >= cutoff_date:
+                runs.append(run)
+            else:
+                # Runs are ordered by date, so we can stop here
+                return runs
 
         # Parse Link header for next page URL
         links = requests.utils.parse_header_links(response.headers.get("Link", ""))
         next_url = None
-
         for link in links:
             if link.get("rel") == "next":
                 next_url = link["url"]
                 break
-
         url = next_url
 
-    return runs[:max_runs]
+    return runs
 
 
 def get_workflow_history(args) -> str:
@@ -431,8 +439,7 @@ def get_workflow_history(args) -> str:
     repo_name, repo = next(iter(config.REPOS.items()))
     org = repo["org"]
 
-    # Get workflow runs history
-    runs = get_workflow_runs_history(org, repo_name, max_runs=1000)
+    runs = get_workflow_runs_history(org, repo_name, days=90)
 
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
