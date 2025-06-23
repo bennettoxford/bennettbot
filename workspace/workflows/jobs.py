@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
@@ -441,9 +442,23 @@ def get_workflow_history(args) -> str:
 
     runs = get_workflow_runs_history(org, repo_name, days=90)
 
+    workflows = defaultdict(list)
+    for run in runs:
+        workflow_id = run["workflow_id"]
+        workflows[workflow_id].append(run)
+
+    if workflows:
+        workflow_info = []
+        for workflow_id, workflow_runs in workflows.items():
+            workflow_name = workflow_runs[0]["name"]  # Get name from first run
+            workflow_info.append(f"{workflow_name}: {len(workflow_runs)} runs")
+        summary = "\n".join(workflow_info)
+    else:
+        summary = "No workflows found"
+
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
-        texts=f"First repo: {org}/{repo_name}\nNumber of workflow runs: {len(runs)}",
+        texts=f"First repo: {org}/{repo_name}\nWorkflows in last 90 days:\n{summary}",
     )
     return json.dumps(blocks)
 
