@@ -444,21 +444,34 @@ def get_workflow_history(args) -> str:
 
     workflows = defaultdict(list)
     for run in runs:
-        workflow_id = run["workflow_id"]
-        workflows[workflow_id].append(run)
+        # Skip in-progress runs - only process completed runs with conclusions
+        conclusion = run.get("conclusion")
+        if not conclusion:
+            continue
 
-    if workflows:
-        workflow_info = []
-        for workflow_id, workflow_runs in workflows.items():
-            workflow_name = workflow_runs[0]["name"]  # Get name from first run
-            workflow_info.append(f"{workflow_name}: {len(workflow_runs)} runs")
-        summary = "\n".join(workflow_info)
-    else:
-        summary = "No workflows found"
+        assert conclusion in ["success", "failure", "cancelled", "timed_out"], (
+            f"Unexpected conclusion: {conclusion}"
+        )
+
+        workflows[run["workflow_id"]].append(
+            {
+                "timestamp": datetime.fromisoformat(
+                    run["created_at"].replace("Z", "+00:00")
+                ),
+                "success": conclusion == "success",
+            }
+        )
+
+    # Show summary of transformed data
+    total_runs = sum(len(runs) for runs in workflows.values())
+    all_runs = [run for runs in workflows.values() for run in runs]
+    success_count = sum(1 for run in all_runs if run["success"])
+    failure_count = sum(1 for run in all_runs if not run["success"])
+    workflows_count = len(workflows)
 
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
-        texts=f"First repo: {org}/{repo_name}\nWorkflows in last 90 days:\n{summary}",
+        texts=f"Repo: {org}/{repo_name}\nTotal runs: {total_runs}\nSuccess: {success_count}, Failure: {failure_count}\nWorkflows: {workflows_count}",
     )
     return json.dumps(blocks)
 
