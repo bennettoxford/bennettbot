@@ -523,7 +523,7 @@ def create_workflow_visualization(workflows, start_time, end_time):
     workflow_names = list(workflows.keys())
 
     chart_width = 1600
-    chart_height = max(600, len(workflow_names) * 15)
+    chart_height = max(600, len(workflow_names) * 10)
 
     colors = {
         WorkflowState.UNKNOWN: "gray",
