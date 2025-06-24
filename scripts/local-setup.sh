@@ -24,6 +24,7 @@ mkdir -p "$WRITEABLE_DIR"
 
 # load ensure_value function
 # shellcheck disable=SC1091
+# shellcheck source=scripts/lib.sh
 . "$BASE_DIR/scripts/lib.sh"
 
 test -f "$ENV_FILE" || cp "$BASE_DIR/dotenv-sample" "$ENV_FILE"
