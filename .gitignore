@@ -47,3 +47,6 @@ htmlcov
 venv/
 .venv/
 tmp
+
+CLAUDE.md
+.claude/
