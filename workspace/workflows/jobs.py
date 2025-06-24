@@ -3,6 +3,7 @@ import json
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from urllib.parse import urljoin
 
 import plotly.graph_objects as go
@@ -29,6 +30,12 @@ from workspace.utils.blocks import (
     get_text_block,
 )
 from workspace.workflows import config
+
+
+class WorkflowState(Enum):
+    UNKNOWN = "unknown"
+    SUCCESS = "success"
+    FAILURE = "failure"
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
@@ -447,36 +454,50 @@ def get_workflow_runs_history(org, repo, cutoff_date):
 
 
 def get_workflow_history(args) -> str:
-    repo_name, repo = next(iter(config.REPOS.items()))
-    org = repo["org"]
-
     end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(days=90)
 
-    runs = get_workflow_runs_history(org, repo_name, start_time)
+    # Get first three repos
+    repos = list(config.REPOS.items())[:3]
 
-    workflows = defaultdict(list)
-    for run in runs:
-        conclusion = run.get("conclusion")
-        if not conclusion:
-            continue
-
-        assert conclusion in ["success", "failure", "cancelled", "timed_out"], (
-            f"Unexpected conclusion: {conclusion}"
-        )
-
-        workflows[run["workflow_id"]].append(
-            {
-                "timestamp": datetime.fromisoformat(
-                    run["created_at"].replace("Z", "+00:00")
-                ),
-                "success": conclusion == "success",
-            }
-        )
-
-    image_path = create_workflow_visualization(
-        workflows, f"{org}/{repo_name}", start_time, end_time
+    workflows = defaultdict(
+        lambda: [{"timestamp": start_time, "state": WorkflowState.UNKNOWN}]
     )
+    for repo_name, repo in repos:
+        org = repo["org"]
+        runs = get_workflow_runs_history(org, repo_name, start_time)
+
+        for run in runs:
+            conclusion = run.get("conclusion")
+            if not conclusion:
+                continue
+
+            assert conclusion in [
+                "success",
+                "failure",
+                "cancelled",
+                "timed_out",
+                "skipped",
+            ], f"Unexpected conclusion: {conclusion}"
+
+            # Use repo/workflow_id as key to distinguish workflows across repos
+            workflow_key = f"{org}/{repo_name}/{run['workflow_id']}"
+
+            if conclusion == "success" or conclusion == "skipped":
+                state = WorkflowState.SUCCESS
+            else:
+                state = WorkflowState.FAILURE
+
+            workflows[workflow_key].append(
+                {
+                    "timestamp": datetime.fromisoformat(
+                        run["created_at"].replace("Z", "+00:00")
+                    ),
+                    "state": state,
+                }
+            )
+
+    image_path = create_workflow_visualization(workflows, start_time, end_time)
 
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
@@ -485,21 +506,27 @@ def get_workflow_history(args) -> str:
     return json.dumps(blocks)
 
 
-def create_workflow_visualization(workflows, repo_name, start_time, end_time):
+def create_workflow_visualization(workflows, start_time, end_time):
     """Create a timeline visualization showing continuous workflow state over time."""
     fig = go.Figure()
 
-    workflow_names = [f"Workflow {wf_id}" for wf_id in workflows.keys()]
+    workflow_names = list(workflows.keys())
+
+    colors = {
+        WorkflowState.UNKNOWN: "gray",
+        WorkflowState.SUCCESS: "green",
+        WorkflowState.FAILURE: "red",
+    }
 
     for workflow_id, runs in workflows.items():
         runs = sorted(runs, key=lambda x: x["timestamp"])
 
         state_periods = []
-        current_state = runs[0]["success"]
+        current_state = runs[0]["state"]
         period_start = runs[0]["timestamp"]
 
         for run in runs[1:]:
-            if run["success"] != current_state:
+            if run["state"] != current_state:
                 # State changed, close current period and start new one
                 state_periods.append(
                     {
@@ -509,30 +536,29 @@ def create_workflow_visualization(workflows, repo_name, start_time, end_time):
                     }
                 )
                 period_start = run["timestamp"]
-                current_state = run["success"]
+                current_state = run["state"]
 
         # Add final period extending to end time
         state_periods.append(
             {"start": period_start, "end": end_time, "state": current_state}
         )
 
-        workflow_name = f"Workflow {workflow_id}"
         for period in state_periods:
-            color = "green" if period["state"] else "red"
+            color = colors[period["state"]]
 
             fig.add_trace(
                 go.Scatter(
                     x=[period["start"], period["end"]],
-                    y=[workflow_name, workflow_name],
+                    y=[workflow_id, workflow_id],
                     mode="lines",
                     line=dict(color=color, width=30),
                     showlegend=False,
-                    name=workflow_name,
+                    name=workflow_id,
                 )
             )
 
     fig.update_layout(
-        title=f"Workflow State Timeline - {repo_name} (Last 90 Days)",
+        title="Workflow State Timeline (Last 90 Days)",
         xaxis_title="Time",
         yaxis_title="Workflows",
         xaxis=dict(type="date", range=[start_time, end_time]),
