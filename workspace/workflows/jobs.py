@@ -518,7 +518,19 @@ def create_workflow_visualization(workflows, start_time, end_time):
         WorkflowState.FAILURE: "red",
     }
 
-    for workflow_id, runs in workflows.items():
+    # Add invisible scatter trace to establish the axes properly
+    fig.add_trace(
+        go.Scatter(
+            x=[start_time, end_time],
+            y=[0, len(workflow_names) - 1],
+            mode="markers",
+            marker=dict(size=0.1, color="rgba(0,0,0,0)"),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    for y_idx, (workflow_id, runs) in enumerate(workflows.items()):
         runs = sorted(runs, key=lambda x: x["timestamp"])
 
         state_periods = []
@@ -546,26 +558,40 @@ def create_workflow_visualization(workflows, start_time, end_time):
         for period in state_periods:
             color = colors[period["state"]]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=[period["start"], period["end"]],
-                    y=[workflow_id, workflow_id],
-                    mode="lines",
-                    line=dict(color=color, width=30),
-                    showlegend=False,
-                    name=workflow_id,
-                )
+            fig.add_shape(
+                type="rect",
+                x0=period["start"],
+                x1=period["end"],
+                y0=y_idx - 0.45,
+                y1=y_idx + 0.45,
+                fillcolor=color,
+                line=dict(width=0),
+                layer="below",
             )
 
     fig.update_layout(
         title="Workflow State Timeline (Last 90 Days)",
         xaxis_title="Time",
         yaxis_title="Workflows",
-        xaxis=dict(type="date", range=[start_time, end_time]),
-        yaxis=dict(categoryorder="array", categoryarray=workflow_names),
+        xaxis=dict(
+            type="date",
+            range=[start_time, end_time],
+            showgrid=True,
+            gridcolor="lightgray",
+            zeroline=False,
+        ),
+        yaxis=dict(
+            tickmode="array",
+            tickvals=list(range(len(workflow_names))),
+            ticktext=workflow_names,
+            range=[-0.5, len(workflow_names) - 0.5],
+            showgrid=False,
+            zeroline=False,
+        ),
         height=600,
         width=1200,
         showlegend=False,
+        plot_bgcolor="white",
     )
 
     output_path = "workflow-history.png"
