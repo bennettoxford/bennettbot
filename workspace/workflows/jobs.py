@@ -457,15 +457,11 @@ def get_workflow_history(args) -> str:
     end_time = datetime.now(timezone.utc)
     start_time = end_time - timedelta(days=180)
 
-    MAX_WORKFLOWS = 100
     workflows = defaultdict(
         lambda: [{"timestamp": start_time, "state": WorkflowState.UNKNOWN}]
     )
 
     for repo_name, repo in config.REPOS.items():
-        if len(workflows) >= MAX_WORKFLOWS:
-            break
-
         org = repo["org"]
         location = f"{org}/{repo_name}"
 
@@ -510,8 +506,6 @@ def get_workflow_history(args) -> str:
                     "state": state,
                 }
             )
-
-    workflows = dict(list(workflows.items())[:MAX_WORKFLOWS])
 
     image_path = create_workflow_visualization(workflows, start_time, end_time)
 
