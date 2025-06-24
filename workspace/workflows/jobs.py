@@ -5,16 +5,20 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 
+import plotly.graph_objects as go
 import requests
+
 
 # Enable caching for local development
 if os.environ.get("ENABLE_HTTP_CACHE"):
     import requests_cache
+
     requests_cache.install_cache(
         cache_name="github_api_cache",
         backend="sqlite",
         expire_after=60 * 60 * 24,  # 1 day
     )
+
 
 from bennettbot import settings
 from workspace.utils import shorthands
@@ -408,13 +412,11 @@ def get_text_blocks_for_key(args) -> str:
     return json.dumps(blocks)
 
 
-def get_workflow_runs_history(org, repo, days=90):
+def get_workflow_runs_history(org, repo, cutoff_date):
     runs = []
     url = f"https://api.github.com/repos/{org}/{repo}/actions/runs"
     params = {"branch": "main", "per_page": 100}
     headers = {"Authorization": f"Bearer {TOKEN}"}
-
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     while url:
         response = requests.get(url, headers=headers, params=params)
@@ -445,15 +447,16 @@ def get_workflow_runs_history(org, repo, days=90):
 
 
 def get_workflow_history(args) -> str:
-    # Get the first repo from the config
     repo_name, repo = next(iter(config.REPOS.items()))
     org = repo["org"]
 
-    runs = get_workflow_runs_history(org, repo_name, days=90)
+    end_time = datetime.now(timezone.utc)
+    start_time = end_time - timedelta(days=90)
+
+    runs = get_workflow_runs_history(org, repo_name, start_time)
 
     workflows = defaultdict(list)
     for run in runs:
-        # Skip in-progress runs - only process completed runs with conclusions
         conclusion = run.get("conclusion")
         if not conclusion:
             continue
@@ -471,18 +474,78 @@ def get_workflow_history(args) -> str:
             }
         )
 
-    # Show summary of transformed data
-    total_runs = sum(len(runs) for runs in workflows.values())
-    all_runs = [run for runs in workflows.values() for run in runs]
-    success_count = sum(1 for run in all_runs if run["success"])
-    failure_count = sum(1 for run in all_runs if not run["success"])
-    workflows_count = len(workflows)
+    image_path = create_workflow_visualization(
+        workflows, f"{org}/{repo_name}", start_time, end_time
+    )
 
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
-        texts=f"Repo: {org}/{repo_name}\nTotal runs: {total_runs}\nSuccess: {success_count}, Failure: {failure_count}\nWorkflows: {workflows_count}",
+        texts=f"Visualization saved to: {image_path}",
     )
     return json.dumps(blocks)
+
+
+def create_workflow_visualization(workflows, repo_name, start_time, end_time):
+    """Create a timeline visualization showing continuous workflow state over time."""
+    fig = go.Figure()
+
+    workflow_names = [f"Workflow {wf_id}" for wf_id in workflows.keys()]
+
+    for workflow_id, runs in workflows.items():
+        runs = sorted(runs, key=lambda x: x["timestamp"])
+
+        state_periods = []
+        current_state = runs[0]["success"]
+        period_start = runs[0]["timestamp"]
+
+        for run in runs[1:]:
+            if run["success"] != current_state:
+                # State changed, close current period and start new one
+                state_periods.append(
+                    {
+                        "start": period_start,
+                        "end": run["timestamp"],
+                        "state": current_state,
+                    }
+                )
+                period_start = run["timestamp"]
+                current_state = run["success"]
+
+        # Add final period extending to end time
+        state_periods.append(
+            {"start": period_start, "end": end_time, "state": current_state}
+        )
+
+        workflow_name = f"Workflow {workflow_id}"
+        for period in state_periods:
+            color = "green" if period["state"] else "red"
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[period["start"], period["end"]],
+                    y=[workflow_name, workflow_name],
+                    mode="lines",
+                    line=dict(color=color, width=30),
+                    showlegend=False,
+                    name=workflow_name,
+                )
+            )
+
+    fig.update_layout(
+        title=f"Workflow State Timeline - {repo_name} (Last 90 Days)",
+        xaxis_title="Time",
+        yaxis_title="Workflows",
+        xaxis=dict(type="date", range=[start_time, end_time]),
+        yaxis=dict(categoryorder="array", categoryarray=workflow_names),
+        height=600,
+        width=1200,
+        showlegend=False,
+    )
+
+    output_path = "workflow-history.png"
+    fig.write_image(output_path)
+
+    return output_path
 
 
 def get_usage_text(args) -> str:
