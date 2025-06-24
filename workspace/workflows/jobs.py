@@ -455,40 +455,54 @@ def get_workflow_runs_history(org, repo, cutoff_date):
 
 def get_workflow_history(args) -> str:
     end_time = datetime.now(timezone.utc)
-    start_time = end_time - timedelta(days=90)
+    start_time = end_time - timedelta(days=180)
 
-    # Get first three repos
-    repos = list(config.REPOS.items())[:3]
-
+    MAX_WORKFLOWS = 100
     workflows = defaultdict(
         lambda: [{"timestamp": start_time, "state": WorkflowState.UNKNOWN}]
     )
-    for repo_name, repo in repos:
-        org = repo["org"]
-        runs = get_workflow_runs_history(org, repo_name, start_time)
 
+    for repo_name, repo in config.REPOS.items():
+        if len(workflows) >= MAX_WORKFLOWS:
+            break
+
+        org = repo["org"]
+        location = f"{org}/{repo_name}"
+
+        # Get lists of workflows to exclude
+        ignored_workflow_ids = config.IGNORED_WORKFLOWS.get(location, [])
+        known_to_fail_ids = config.WORKFLOWS_KNOWN_TO_FAIL.get(location, [])
+        excluded_workflow_ids = set(ignored_workflow_ids + known_to_fail_ids)
+
+        runs = get_workflow_runs_history(org, repo_name, start_time)
         for run in runs:
+            workflow_id = run.get("workflow_id")
+
+            # Skip excluded workflows
+            if workflow_id in excluded_workflow_ids:
+                continue
+
             conclusion = run.get("conclusion")
+
+            # Skip runs that haven't finished
             if not conclusion:
                 continue
 
             assert conclusion in [
                 "success",
+                "skipped",
                 "failure",
                 "cancelled",
                 "timed_out",
-                "skipped",
+                "startup_failure",
             ], f"Unexpected conclusion: {conclusion}"
-
-            # Use repo/workflow_id as key to distinguish workflows across repos
-            workflow_key = f"{org}/{repo_name}/{run['workflow_id']}"
 
             if conclusion == "success" or conclusion == "skipped":
                 state = WorkflowState.SUCCESS
             else:
                 state = WorkflowState.FAILURE
 
-            workflows[workflow_key].append(
+            workflows[workflow_id].append(
                 {
                     "timestamp": datetime.fromisoformat(
                         run["created_at"].replace("Z", "+00:00")
@@ -496,6 +510,8 @@ def get_workflow_history(args) -> str:
                     "state": state,
                 }
             )
+
+    workflows = dict(list(workflows.items())[:MAX_WORKFLOWS])
 
     image_path = create_workflow_visualization(workflows, start_time, end_time)
 
@@ -511,6 +527,9 @@ def create_workflow_visualization(workflows, start_time, end_time):
     fig = go.Figure()
 
     workflow_names = list(workflows.keys())
+
+    chart_width = 1600
+    chart_height = max(600, len(workflow_names) * 15)
 
     colors = {
         WorkflowState.UNKNOWN: "gray",
@@ -570,9 +589,6 @@ def create_workflow_visualization(workflows, start_time, end_time):
             )
 
     fig.update_layout(
-        title="Workflow State Timeline (Last 90 Days)",
-        xaxis_title="Time",
-        yaxis_title="Workflows",
         xaxis=dict(
             type="date",
             range=[start_time, end_time],
@@ -581,21 +597,20 @@ def create_workflow_visualization(workflows, start_time, end_time):
             zeroline=False,
         ),
         yaxis=dict(
-            tickmode="array",
-            tickvals=list(range(len(workflow_names))),
-            ticktext=workflow_names,
+            showticklabels=False,
             range=[-0.5, len(workflow_names) - 0.5],
             showgrid=False,
             zeroline=False,
         ),
-        height=600,
-        width=1200,
+        height=chart_height,
+        width=chart_width,
         showlegend=False,
         plot_bgcolor="white",
+        margin=dict(l=10, r=10, t=10, b=40),
     )
 
     output_path = "workflow-history.png"
-    fig.write_image(output_path)
+    fig.write_image(output_path, width=chart_width, height=chart_height)
 
     return output_path
 
