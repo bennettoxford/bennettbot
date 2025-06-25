@@ -455,7 +455,7 @@ def get_workflow_runs_history(org, repo, cutoff_date):
 
 def get_workflow_history(args) -> str:
     end_time = datetime.now(timezone.utc)
-    start_time = end_time - timedelta(days=180)
+    start_time = end_time - timedelta(days=365)
 
     workflows = defaultdict(
         lambda: [{"timestamp": start_time, "state": WorkflowState.UNKNOWN}]
