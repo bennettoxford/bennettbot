@@ -543,6 +543,10 @@ def create_workflow_visualization(workflows, start_time, end_time):
         )
     )
 
+    # Collect shapes instead of adding them immediately because the latter
+    # is very slow for large numbers of shapes
+    all_shapes = []
+
     for y_idx, (workflow_id, runs) in enumerate(workflows.items()):
         runs = sorted(runs, key=lambda x: x["timestamp"])
 
@@ -570,17 +574,20 @@ def create_workflow_visualization(workflows, start_time, end_time):
 
         for period in state_periods:
             color = colors[period["state"]]
-
-            fig.add_shape(
-                type="rect",
-                x0=period["start"],
-                x1=period["end"],
-                y0=y_idx - 0.45,
-                y1=y_idx + 0.45,
-                fillcolor=color,
-                line=dict(width=0),
-                layer="below",
+            all_shapes.append(
+                {
+                    "type": "rect",
+                    "x0": period["start"],
+                    "x1": period["end"],
+                    "y0": y_idx - 0.45,
+                    "y1": y_idx + 0.45,
+                    "fillcolor": color,
+                    "line": dict(width=0),
+                    "layer": "below",
+                }
             )
+
+    fig.update_layout(shapes=all_shapes)
 
     fig.update_layout(
         xaxis=dict(
