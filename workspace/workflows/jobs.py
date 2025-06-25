@@ -1,25 +1,15 @@
 import argparse
 import json
 import os
+import warnings
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from urllib.parse import urljoin
 
+import pandas as pd
 import plotly.graph_objects as go
 import requests
-
-
-# Enable caching for local development
-if os.environ.get("ENABLE_HTTP_CACHE"):
-    import requests_cache
-
-    requests_cache.install_cache(
-        cache_name="github_api_cache",
-        backend="sqlite",
-        expire_after=60 * 60 * 24,  # 1 day
-    )
-
 
 from bennettbot import settings
 from workspace.utils import shorthands
@@ -30,6 +20,24 @@ from workspace.utils.blocks import (
     get_text_block,
 )
 from workspace.workflows import config
+
+
+# Suppress pandas deprecation warning for .dt.to_pydatetime()
+warnings.filterwarnings(
+    "ignore",
+    "The behavior of DatetimeProperties.to_pydatetime is deprecated",
+    FutureWarning,
+)
+
+# Enable caching for local development
+if os.environ.get("ENABLE_HTTP_CACHE"):
+    import requests_cache
+
+    requests_cache.install_cache(
+        cache_name="github_api_cache",
+        backend="sqlite",
+        expire_after=60 * 60 * 24,  # 1 day
+    )
 
 
 class WorkflowState(Enum):
@@ -507,54 +515,231 @@ def get_workflow_history(args) -> str:
                 }
             )
 
-    image_path = create_workflow_visualization(workflows, start_time, end_time)
+    combined_chart_path = create_workflow_visualization(workflows, start_time, end_time)
+
+    texts = [f"Workflow history saved to: {combined_chart_path}"]
 
     blocks = get_basic_header_and_text_blocks(
         header_text="Workflow History",
-        texts=f"Visualization saved to: {image_path}",
+        texts=texts,
     )
     return json.dumps(blocks)
 
 
 def create_workflow_visualization(workflows, start_time, end_time):
-    """Create a timeline visualization showing continuous workflow state over time."""
-    fig = go.Figure()
+    # Collect all workflow runs with timestamps and states
+    all_runs = []
+    mttr_data = []
 
-    workflow_names = list(workflows.keys())
+    for workflow_id, runs in workflows.items():
+        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
 
-    chart_width = 1600
-    chart_height = max(600, len(workflow_names) * 10)
+        for i, run in enumerate(sorted_runs):
+            if run["state"] != WorkflowState.UNKNOWN:
+                all_runs.append(
+                    {
+                        "timestamp": run["timestamp"],
+                        "failed": run["state"] == WorkflowState.FAILURE,
+                        "workflow_id": workflow_id,
+                    }
+                )
 
+                # Calculate MTTR: time from failure to next success
+                if run["state"] == WorkflowState.FAILURE:
+                    for j in range(i + 1, len(sorted_runs)):
+                        next_run = sorted_runs[j]
+                        if next_run["state"] == WorkflowState.SUCCESS:
+                            recovery_time = next_run["timestamp"] - run["timestamp"]
+                            mttr_data.append(
+                                {
+                                    "failure_time": run["timestamp"],
+                                    "recovery_time_hours": recovery_time.total_seconds()
+                                    / 3600,
+                                }
+                            )
+                            break
+
+    if not all_runs:
+        print("No workflow runs found")
+        return None
+
+    # Convert to DataFrame and group by week
+    df = pd.DataFrame(all_runs)
+    # Remove timezone info to avoid warning when creating periods
+    df["timestamp"] = df["timestamp"].dt.tz_localize(None)
+    df["week"] = df["timestamp"].dt.to_period("W")
+
+    # Calculate weekly failure rates
+    # count gives total runs per week, sum gives failed runs per week
+    weekly_stats = df.groupby("week").agg({"failed": ["count", "sum"]}).round(3)
+
+    weekly_stats.columns = ["total_runs", "failed_runs"]
+    weekly_stats["failure_rate"] = (
+        weekly_stats["failed_runs"] / weekly_stats["total_runs"] * 100
+    ).round(1)
+    weekly_stats["week_start"] = weekly_stats.index.to_timestamp()
+
+    # Calculate weekly MTTR
+    if mttr_data:
+        mttr_df = pd.DataFrame(mttr_data)
+        mttr_df["failure_time"] = mttr_df["failure_time"].dt.tz_localize(None)
+        mttr_df["week"] = mttr_df["failure_time"].dt.to_period("W")
+        weekly_mttr = mttr_df.groupby("week")["recovery_time_hours"].mean().round(1)
+        weekly_stats = weekly_stats.join(weekly_mttr, how="left")
+        weekly_stats["recovery_time_hours"] = weekly_stats[
+            "recovery_time_hours"
+        ].fillna(0)
+    else:
+        weekly_stats["recovery_time_hours"] = 0
+
+    # Calculate total red time per week (failed runs * their duration until next success)
+    # and track active workflows per week to normalize downtime
+    red_time_data = []
+    active_workflows_data = []
+
+    for workflow_id, runs in workflows.items():
+        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
+
+        for i, run in enumerate(sorted_runs):
+            if run["state"] == WorkflowState.FAILURE:
+                # Find next success or end of period
+                end_time_for_failure = end_time  # Default to end of period
+                for j in range(i + 1, len(sorted_runs)):
+                    if sorted_runs[j]["state"] == WorkflowState.SUCCESS:
+                        end_time_for_failure = sorted_runs[j]["timestamp"]
+                        break
+
+                red_duration_hours = (
+                    end_time_for_failure - run["timestamp"]
+                ).total_seconds() / 3600
+                red_time_data.append(
+                    {
+                        "failure_time": run["timestamp"],
+                        "red_duration_hours": red_duration_hours,
+                    }
+                )
+
+            # Track active workflows (non-unknown state) for normalization
+            if run["state"] != WorkflowState.UNKNOWN:
+                active_workflows_data.append(
+                    {
+                        "timestamp": run["timestamp"],
+                        "workflow_id": workflow_id,
+                    }
+                )
+
+    # Calculate active workflows per week for normalization
+    active_workflows_per_week = {}
+    if active_workflows_data:
+        active_df = pd.DataFrame(active_workflows_data)
+        active_df["timestamp"] = active_df["timestamp"].dt.tz_localize(None)
+        active_df["week"] = active_df["timestamp"].dt.to_period("W")
+        # Count unique workflows per week
+        active_workflows_per_week = (
+            active_df.groupby("week")["workflow_id"].nunique().to_dict()
+        )
+
+    if red_time_data:
+        red_time_df = pd.DataFrame(red_time_data)
+        red_time_df["failure_time"] = red_time_df["failure_time"].dt.tz_localize(None)
+        red_time_df["week"] = red_time_df["failure_time"].dt.to_period("W")
+        weekly_red_time = (
+            red_time_df.groupby("week")["red_duration_hours"].sum().round(1)
+        )
+        weekly_stats = weekly_stats.join(weekly_red_time, how="left")
+        weekly_stats["red_duration_hours"] = weekly_stats["red_duration_hours"].fillna(
+            0
+        )
+
+        # Normalize downtime by number of active workflows
+        weekly_stats["downtime_per_workflow"] = 0.0
+        for week_period in weekly_stats.index:
+            total_downtime = weekly_stats.loc[week_period, "red_duration_hours"]
+            active_count = active_workflows_per_week.get(
+                week_period, 1
+            )  # Default to 1 to avoid division by zero
+            if active_count > 0:
+                weekly_stats.loc[week_period, "downtime_per_workflow"] = round(
+                    total_downtime / active_count, 2
+                )
+    else:
+        weekly_stats["red_duration_hours"] = 0
+        weekly_stats["downtime_per_workflow"] = 0
+
+    # Create subplots with shared x-axis
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(
+        rows=4,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.15, 0.15, 0.15, 0.55],
+    )
+
+    # Add failure rate trace to top subplot
+    fig.add_trace(
+        go.Scatter(
+            x=weekly_stats["week_start"].dt.to_pydatetime(),
+            y=weekly_stats["failure_rate"].values,
+            mode="lines+markers",
+            line=dict(color="#E74C3C", width=3),
+            marker=dict(size=6, color="#E74C3C"),
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Add MTTR trace to middle subplot
+    fig.add_trace(
+        go.Scatter(
+            x=weekly_stats["week_start"].dt.to_pydatetime(),
+            y=weekly_stats["recovery_time_hours"].values,
+            mode="lines+markers",
+            line=dict(color="#3498DB", width=3),
+            marker=dict(size=6, color="#3498DB"),
+            showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+
+    # Add downtime per workflow trace to third subplot
+    fig.add_trace(
+        go.Scatter(
+            x=weekly_stats["week_start"].dt.to_pydatetime(),
+            y=weekly_stats["downtime_per_workflow"].values,
+            mode="lines+markers",
+            line=dict(color="#8E44AD", width=3),
+            marker=dict(size=6, color="#8E44AD"),
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+
+    # Add heatmap to bottom subplot
     colors = {
         WorkflowState.UNKNOWN: "gray",
         WorkflowState.SUCCESS: "green",
         WorkflowState.FAILURE: "red",
     }
 
-    # Add invisible scatter trace to establish the axes properly
-    fig.add_trace(
-        go.Scatter(
-            x=[start_time, end_time],
-            y=[0, len(workflow_names) - 1],
-            mode="markers",
-            marker=dict(size=0.1, color="rgba(0,0,0,0)"),
-            showlegend=False,
-            hoverinfo="skip",
-        )
-    )
-
-    # Collect shapes instead of adding them immediately because the latter
-    # is very slow for large numbers of shapes
+    # Create workflow name list and y-axis positions
+    # Filter out workflows with no runs to ensure consistent indexing
+    workflows_with_runs = {k: v for k, v in workflows.items() if v}
+    workflow_names = list(workflows_with_runs.keys())
     all_shapes = []
 
-    for y_idx, (workflow_id, runs) in enumerate(workflows.items()):
-        runs = sorted(runs, key=lambda x: x["timestamp"])
+    for y_idx, (workflow_id, runs) in enumerate(workflows_with_runs.items()):
+        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
 
         state_periods = []
-        current_state = runs[0]["state"]
-        period_start = runs[0]["timestamp"]
+        current_state = sorted_runs[0]["state"]
+        period_start = sorted_runs[0]["timestamp"]
 
-        for run in runs[1:]:
+        for run in sorted_runs[1:]:
             if run["state"] != current_state:
                 # State changed, close current period and start new one
                 state_periods.append(
@@ -584,30 +769,125 @@ def create_workflow_visualization(workflows, start_time, end_time):
                     "fillcolor": color,
                     "line": dict(width=0),
                     "layer": "below",
+                    "xref": "x4",  # Reference the 4th subplot's x-axis
+                    "yref": "y4",  # Reference the 4th subplot's y-axis
                 }
             )
 
+    # Add empty trace to 4th subplot to establish axes
+    fig.add_trace(
+        go.Scatter(
+            x=[start_time, end_time],
+            y=[0, len(workflow_names) - 1],
+            mode="markers",
+            marker=dict(size=0.1, color="rgba(0,0,0,0)"),
+            showlegend=False,
+            hoverinfo="skip",
+        ),
+        row=4,
+        col=1,
+    )
+
+    # Note: Vertical reference line removed - fig.add_vline with row="all"
+    # causes coordinate corruption in subplot heatmaps
+
+    chart_width = 800
+    chart_height = 1000  # Increased height for four subplots
+
+    # Apply shapes to the layout
     fig.update_layout(shapes=all_shapes)
 
     fig.update_layout(
-        xaxis=dict(
-            type="date",
-            range=[start_time, end_time],
-            showgrid=True,
-            gridcolor="lightgray",
-            zeroline=False,
-        ),
-        yaxis=dict(
-            showticklabels=False,
-            range=[-0.5, len(workflow_names) - 0.5],
-            showgrid=False,
-            zeroline=False,
-        ),
+        title="Workflow statistics (by week)",
         height=chart_height,
         width=chart_width,
         showlegend=False,
         plot_bgcolor="white",
-        margin=dict(l=10, r=10, t=10, b=40),
+        margin=dict(l=60, r=20, t=80, b=80),
+    )
+
+    # Update x-axis for all subplots (shared x-axis)
+    # IMPORTANT: Use consistent x-axis range across all subplots to prevent coordinate corruption
+    fig.update_xaxes(
+        type="date",
+        range=[start_time, end_time],  # CHANGED: Use same range as heatmap
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=False,
+        row=1,
+        col=1,
+    )
+
+    fig.update_yaxes(
+        range=[0, weekly_stats["failure_rate"].max() * 1.1],
+        showgrid=True,
+        gridcolor="lightgray",
+        title_text="Failure rate (%)",
+        row=1,
+        col=1,
+    )
+
+    # Add axis configuration for MTTR subplot
+    fig.update_xaxes(
+        type="date",
+        range=[start_time, end_time],  # CONSISTENT: Same range as other subplots
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=False,
+        row=2,
+        col=1,
+    )
+
+    fig.update_yaxes(
+        range=[0, weekly_stats["recovery_time_hours"].max() * 1.1]
+        if weekly_stats["recovery_time_hours"].max() > 0
+        else [0, 1],
+        showgrid=True,
+        gridcolor="lightgray",
+        title_text="MTTR (hrs)",
+        row=2,
+        col=1,
+    )
+
+    # Add axis configuration for downtime subplot
+    fig.update_xaxes(
+        type="date",
+        range=[start_time, end_time],  # CONSISTENT: Same range as other subplots
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=False,
+        row=3,
+        col=1,
+    )
+
+    fig.update_yaxes(
+        range=[0, weekly_stats["downtime_per_workflow"].max() * 1.1]
+        if weekly_stats["downtime_per_workflow"].max() > 0
+        else [0, 1],
+        showgrid=True,
+        gridcolor="lightgray",
+        title_text="Downtime per<br>workflow (hrs)",
+        row=3,
+        col=1,
+    )
+
+    fig.update_xaxes(
+        type="date",
+        range=[start_time, end_time],
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=True,
+        row=4,
+        col=1,
+    )
+
+    fig.update_yaxes(
+        showticklabels=False,
+        range=[-0.5, len(workflow_names) - 0.5],
+        showgrid=False,
+        zeroline=False,
+        row=4,
+        col=1,
     )
 
     output_path = "workflow-history.png"
