@@ -89,6 +89,10 @@ REPOS = {
         "org": "ebmdatalab",
         "team": "Team REX",
     },
+    "tpp-database-utils": {
+        "org": "opensafely-core",
+        "team": "Team RAP",
+    },
 }
 
 IGNORED_WORKFLOWS = {
