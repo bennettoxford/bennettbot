@@ -4,12 +4,12 @@ import os
 import warnings
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from urllib.parse import urljoin
 
 import pandas as pd
 import plotly.graph_objects as go
 import requests
+from plotly.subplots import make_subplots
 
 from bennettbot import settings
 from workspace.utils import shorthands
@@ -38,12 +38,6 @@ if os.environ.get("ENABLE_HTTP_CACHE"):
         backend="sqlite",
         expire_after=60 * 60 * 24,  # 1 day
     )
-
-
-class WorkflowState(Enum):
-    UNKNOWN = "unknown"
-    SUCCESS = "success"
-    FAILURE = "failure"
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
@@ -427,473 +421,430 @@ def get_text_blocks_for_key(args) -> str:
     return json.dumps(blocks)
 
 
-def get_workflow_runs_history(org, repo, cutoff_date):
+def get_workflow_runs(start_time):
     runs = []
-    url = f"https://api.github.com/repos/{org}/{repo}/actions/runs"
-    params = {"branch": "main", "per_page": 100}
-    headers = {"Authorization": f"Bearer {TOKEN}"}
 
-    while url:
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        data = response.json()
+    for repo_name, repo in config.REPOS.items():
+        org = repo["org"]
 
-        page_runs = data["workflow_runs"]
+        url = f"https://api.github.com/repos/{org}/{repo_name}/actions/runs"
+        params = {"branch": "main", "per_page": 100}
+        headers = {"Authorization": f"Bearer {TOKEN}"}
 
-        # Filter runs by date and add to results
-        for run in page_runs:
-            run_date = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-            if run_date >= cutoff_date:
-                runs.append(run)
-            else:
-                # Runs are ordered by date, so we can stop here
-                return runs
+        while url:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            found_old_run = False
 
-        # Parse Link header for next page URL
-        links = requests.utils.parse_header_links(response.headers.get("Link", ""))
-        next_url = None
-        for link in links:
-            if link.get("rel") == "next":
-                next_url = link["url"]
+            for run in data["workflow_runs"]:
+                run_date = datetime.fromisoformat(
+                    run["created_at"].replace("Z", "+00:00")
+                )
+                if run_date < start_time:
+                    # Runs are ordered by date, so we can stop here
+                    found_old_run = True
+                    break
+                runs.append(
+                    (
+                        org,
+                        repo_name,
+                        run.get("workflow_id"),
+                        run_date,
+                        run.get("conclusion"),
+                    )
+                )
+
+            if found_old_run:
                 break
-        url = next_url
+
+            links = requests.utils.parse_header_links(response.headers.get("Link", ""))
+            url = next(
+                (link["url"] for link in links if link.get("rel") == "next"), None
+            )
 
     return runs
 
 
-def get_workflow_history(args) -> str:
-    end_time = datetime.now(timezone.utc)
-    start_time = end_time - timedelta(days=365)
-
-    workflows = defaultdict(
-        lambda: [{"timestamp": start_time, "state": WorkflowState.UNKNOWN}]
-    )
-
+def remove_excluded_workflows(runs):
+    exclusions = {}
     for repo_name, repo in config.REPOS.items():
-        org = repo["org"]
-        location = f"{org}/{repo_name}"
+        location = f"{repo['org']}/{repo_name}"
+        ignored = config.IGNORED_WORKFLOWS.get(location, [])
+        known_to_fail = config.WORKFLOWS_KNOWN_TO_FAIL.get(location, [])
+        exclusions[(repo["org"], repo_name)] = set(ignored + known_to_fail)
 
-        # Get lists of workflows to exclude
-        ignored_workflow_ids = config.IGNORED_WORKFLOWS.get(location, [])
-        known_to_fail_ids = config.WORKFLOWS_KNOWN_TO_FAIL.get(location, [])
-        excluded_workflow_ids = set(ignored_workflow_ids + known_to_fail_ids)
-
-        runs = get_workflow_runs_history(org, repo_name, start_time)
-        for run in runs:
-            workflow_id = run.get("workflow_id")
-
-            # Skip excluded workflows
-            if workflow_id in excluded_workflow_ids:
-                continue
-
-            conclusion = run.get("conclusion")
-
-            # Skip runs that haven't finished
-            if not conclusion:
-                continue
-
-            assert conclusion in [
-                "success",
-                "skipped",
-                "failure",
-                "cancelled",
-                "timed_out",
-                "startup_failure",
-            ], f"Unexpected conclusion: {conclusion}"
-
-            if conclusion == "success" or conclusion == "skipped":
-                state = WorkflowState.SUCCESS
-            else:
-                state = WorkflowState.FAILURE
-
-            workflows[workflow_id].append(
-                {
-                    "timestamp": datetime.fromisoformat(
-                        run["created_at"].replace("Z", "+00:00")
-                    ),
-                    "state": state,
-                }
-            )
-
-    combined_chart_path = create_workflow_visualization(workflows, start_time, end_time)
-
-    texts = [f"Workflow history saved to: {combined_chart_path}"]
-
-    blocks = get_basic_header_and_text_blocks(
-        header_text="Workflow History",
-        texts=texts,
-    )
-    return json.dumps(blocks)
+    return [
+        (org, repo, workflow, date, conclusion)
+        for org, repo, workflow, date, conclusion in runs
+        if workflow not in exclusions[(org, repo)]
+    ]
 
 
-def create_workflow_visualization(workflows, start_time, end_time):
-    # Collect all workflow runs with timestamps and states
-    all_runs = []
-    mttr_data = []
+def strip_repo(runs):
+    return [
+        (workflow, date, conclusion) for org, repo, workflow, date, conclusion in runs
+    ]
 
-    for workflow_id, runs in workflows.items():
-        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
 
-        for i, run in enumerate(sorted_runs):
-            if run["state"] != WorkflowState.UNKNOWN:
-                all_runs.append(
-                    {
-                        "timestamp": run["timestamp"],
-                        "failed": run["state"] == WorkflowState.FAILURE,
-                        "workflow_id": workflow_id,
-                    }
-                )
+def convert_states(runs):
+    converted = []
 
-                # Calculate MTTR: time from failure to next success
-                if run["state"] == WorkflowState.FAILURE:
-                    for j in range(i + 1, len(sorted_runs)):
-                        next_run = sorted_runs[j]
-                        if next_run["state"] == WorkflowState.SUCCESS:
-                            recovery_time = next_run["timestamp"] - run["timestamp"]
-                            mttr_data.append(
-                                {
-                                    "failure_time": run["timestamp"],
-                                    "recovery_time_hours": recovery_time.total_seconds()
-                                    / 3600,
-                                }
-                            )
-                            break
+    for workflow, date, conclusion in runs:
+        # Skip runs that haven't finished
+        if not conclusion:
+            continue
 
-    if not all_runs:
-        print("No workflow runs found")
-        return None
+        # Skip skipped and startup_failure runs - leave previous status undisturbed
+        if conclusion in ["skipped", "startup_failure"]:
+            continue
 
-    # Convert to DataFrame and group by week
-    df = pd.DataFrame(all_runs)
-    # Remove timezone info to avoid warning when creating periods
-    df["timestamp"] = df["timestamp"].dt.tz_localize(None)
-    df["week"] = df["timestamp"].dt.to_period("W")
+        assert conclusion in [
+            "success",
+            "failure",
+            "cancelled",
+            "timed_out",
+        ], f"Unexpected conclusion: {conclusion}"
 
-    # Calculate weekly failure rates
-    # count gives total runs per week, sum gives failed runs per week
-    weekly_stats = df.groupby("week").agg({"failed": ["count", "sum"]}).round(3)
+        converted.append((workflow, date, conclusion == "success"))
 
-    weekly_stats.columns = ["total_runs", "failed_runs"]
-    weekly_stats["failure_rate"] = (
-        weekly_stats["failed_runs"] / weekly_stats["total_runs"] * 100
-    ).round(1)
-    weekly_stats["week_start"] = weekly_stats.index.to_timestamp()
+    return converted
 
-    # Calculate weekly MTTR
-    if mttr_data:
-        mttr_df = pd.DataFrame(mttr_data)
-        mttr_df["failure_time"] = mttr_df["failure_time"].dt.tz_localize(None)
-        mttr_df["week"] = mttr_df["failure_time"].dt.to_period("W")
-        weekly_mttr = mttr_df.groupby("week")["recovery_time_hours"].mean().round(1)
-        weekly_stats = weekly_stats.join(weekly_mttr, how="left")
-        weekly_stats["recovery_time_hours"] = weekly_stats[
-            "recovery_time_hours"
-        ].fillna(0)
-    else:
-        weekly_stats["recovery_time_hours"] = 0
 
-    # Calculate total red time per week (failed runs * their duration until next success)
-    # and track active workflows per week to normalize downtime
-    red_time_data = []
-    active_workflows_data = []
+def build_workflows(runs):
+    workflows = defaultdict(list)
 
-    for workflow_id, runs in workflows.items():
-        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
+    for workflow, date, success in runs:
+        workflows[workflow].append((date, success))
 
-        for i, run in enumerate(sorted_runs):
-            if run["state"] == WorkflowState.FAILURE:
-                # Find next success or end of period
-                end_time_for_failure = end_time  # Default to end of period
-                for j in range(i + 1, len(sorted_runs)):
-                    if sorted_runs[j]["state"] == WorkflowState.SUCCESS:
-                        end_time_for_failure = sorted_runs[j]["timestamp"]
+    for workflow in workflows:
+        workflows[workflow] = sorted(workflows[workflow], key=lambda x: x[0])
+
+    return workflows
+
+
+def add_recoveries(workflows):
+    with_recoveries = defaultdict(list)
+    for workflow, state_changes in workflows.items():
+        for i, (date, success) in enumerate(state_changes):
+            recovery = None
+            if not success:
+                for j in range(i + 1, len(state_changes)):
+                    next_date, next_success = state_changes[j]
+                    if next_success:
+                        recovery = (next_date - date).total_seconds() / 3600
                         break
+            with_recoveries[workflow].append((date, success, recovery))
+    return with_recoveries
 
-                red_duration_hours = (
-                    end_time_for_failure - run["timestamp"]
-                ).total_seconds() / 3600
-                red_time_data.append(
-                    {
-                        "failure_time": run["timestamp"],
-                        "red_duration_hours": red_duration_hours,
-                    }
-                )
 
-            # Track active workflows (non-unknown state) for normalization
-            if run["state"] != WorkflowState.UNKNOWN:
-                active_workflows_data.append(
-                    {
-                        "timestamp": run["timestamp"],
-                        "workflow_id": workflow_id,
-                    }
-                )
+def build_spans(workflows):
+    spans = defaultdict(list)
+    for workflow, runs in workflows.items():
+        last_success = None
+        for date, success, _ in runs:
+            if success == last_success:
+                continue
+            spans[workflow].append((date, success))
+            last_success = success
+    return spans
 
-    # Calculate active workflows per week for normalization
-    active_workflows_per_week = {}
-    if active_workflows_data:
-        active_df = pd.DataFrame(active_workflows_data)
-        active_df["timestamp"] = active_df["timestamp"].dt.tz_localize(None)
-        active_df["week"] = active_df["timestamp"].dt.to_period("W")
-        # Count unique workflows per week
-        active_workflows_per_week = (
-            active_df.groupby("week")["workflow_id"].nunique().to_dict()
-        )
 
-    if red_time_data:
-        red_time_df = pd.DataFrame(red_time_data)
-        red_time_df["failure_time"] = red_time_df["failure_time"].dt.tz_localize(None)
-        red_time_df["week"] = red_time_df["failure_time"].dt.to_period("W")
-        weekly_red_time = (
-            red_time_df.groupby("week")["red_duration_hours"].sum().round(1)
-        )
-        weekly_stats = weekly_stats.join(weekly_red_time, how="left")
-        weekly_stats["red_duration_hours"] = weekly_stats["red_duration_hours"].fillna(
-            0
-        )
+def get_yesterday_end():
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    return datetime.combine(yesterday, datetime.max.time()).replace(tzinfo=None)
 
-        # Normalize downtime by number of active workflows
-        weekly_stats["downtime_per_workflow"] = 0.0
-        for week_period in weekly_stats.index:
-            total_downtime = weekly_stats.loc[week_period, "red_duration_hours"]
-            active_count = active_workflows_per_week.get(
-                week_period, 1
-            )  # Default to 1 to avoid division by zero
-            if active_count > 0:
-                weekly_stats.loc[week_period, "downtime_per_workflow"] = round(
-                    total_downtime / active_count, 2
-                )
-    else:
-        weekly_stats["red_duration_hours"] = 0
-        weekly_stats["downtime_per_workflow"] = 0
 
-    # Create subplots with shared x-axis
-    from plotly.subplots import make_subplots
-
-    fig = make_subplots(
-        rows=4,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.03,
-        row_heights=[0.15, 0.15, 0.15, 0.55],
-    )
-
-    # Add failure rate trace to top subplot
-    fig.add_trace(
-        go.Scatter(
-            x=weekly_stats["week_start"].dt.to_pydatetime(),
-            y=weekly_stats["failure_rate"].values,
-            mode="lines+markers",
-            line=dict(color="#E74C3C", width=3),
-            marker=dict(size=6, color="#E74C3C"),
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    # Add MTTR trace to middle subplot
-    fig.add_trace(
-        go.Scatter(
-            x=weekly_stats["week_start"].dt.to_pydatetime(),
-            y=weekly_stats["recovery_time_hours"].values,
-            mode="lines+markers",
-            line=dict(color="#3498DB", width=3),
-            marker=dict(size=6, color="#3498DB"),
-            showlegend=False,
-        ),
-        row=2,
-        col=1,
-    )
-
-    # Add downtime per workflow trace to third subplot
-    fig.add_trace(
-        go.Scatter(
-            x=weekly_stats["week_start"].dt.to_pydatetime(),
-            y=weekly_stats["downtime_per_workflow"].values,
-            mode="lines+markers",
-            line=dict(color="#8E44AD", width=3),
-            marker=dict(size=6, color="#8E44AD"),
-            showlegend=False,
-        ),
-        row=3,
-        col=1,
-    )
-
-    # Add heatmap to bottom subplot
-    colors = {
-        WorkflowState.UNKNOWN: "gray",
-        WorkflowState.SUCCESS: "green",
-        WorkflowState.FAILURE: "red",
+def get_week_frequency():
+    today = datetime.now().date()
+    yesterday_weekday = (today.weekday() - 1) % 7
+    weekday_to_freq = {
+        0: "W-MON",  # yesterday was Monday
+        1: "W-TUE",  # yesterday was Tuesday
+        2: "W-WED",  # yesterday was Wednesday
+        3: "W-THU",  # yesterday was Thursday
+        4: "W-FRI",  # yesterday was Friday
+        5: "W-SAT",  # yesterday was Saturday
+        6: "W-SUN",  # yesterday was Sunday
     }
+    return weekday_to_freq[yesterday_weekday]
 
-    # Create workflow name list and y-axis positions
-    # Filter out workflows with no runs to ensure consistent indexing
-    workflows_with_runs = {k: v for k, v in workflows.items() if v}
-    workflow_names = list(workflows_with_runs.keys())
-    all_shapes = []
 
-    for y_idx, (workflow_id, runs) in enumerate(workflows_with_runs.items()):
-        sorted_runs = sorted(runs, key=lambda x: x["timestamp"])
+def calculate_stats(workflows):
+    df = pd.DataFrame(
+        (
+            (workflow, date, success, recovery)
+            for workflow, runs in workflows.items()
+            for date, success, recovery in runs
+        ),
+        columns=["workflow", "date", "success", "recovery"],
+    )
 
-        state_periods = []
-        current_state = sorted_runs[0]["state"]
-        period_start = sorted_runs[0]["timestamp"]
+    # Filter out today's data, which is part of an incomplete week
+    yesterday_end = get_yesterday_end()
+    df["date"] = df["date"].dt.tz_localize(None)  # avoids period conversion warning
+    df = df[df["date"] <= yesterday_end]
 
-        for run in sorted_runs[1:]:
-            if run["state"] != current_state:
-                # State changed, close current period and start new one
-                state_periods.append(
-                    {
-                        "start": period_start,
-                        "end": run["timestamp"],
-                        "state": current_state,
-                    }
-                )
-                period_start = run["timestamp"]
-                current_state = run["state"]
+    # Use dynamic week frequency that ends yesterday
+    df["week"] = df["date"].dt.to_period(get_week_frequency())
 
-        # Add final period extending to end time
-        state_periods.append(
-            {"start": period_start, "end": end_time, "state": current_state}
+    stats = (
+        df.groupby("week")
+        .agg(
+            {
+                "success": [
+                    "count",
+                    lambda x: (~x).sum(),
+                ],  # sum give number of failures
+                "recovery": ["mean", "sum"],
+                "workflow": "nunique",
+            }
         )
+        .round(3)
+    )
+    stats.columns = [
+        "total_runs",
+        "failed_runs",
+        "recovery_time",
+        "downtime_duration",
+        "active_workflows",
+    ]
+    stats["week_start"] = stats.index.to_timestamp()
 
-        for period in state_periods:
-            color = colors[period["state"]]
-            all_shapes.append(
-                {
-                    "type": "rect",
-                    "x0": period["start"],
-                    "x1": period["end"],
-                    "y0": y_idx - 0.45,
-                    "y1": y_idx + 0.45,
-                    "fillcolor": color,
-                    "line": dict(width=0),
-                    "layer": "below",
-                    "xref": "x4",  # Reference the 4th subplot's x-axis
-                    "yref": "y4",  # Reference the 4th subplot's y-axis
-                }
-            )
+    stats["failure_rate"] = stats["failed_runs"] / stats["total_runs"] * 100
+    stats["downtime_per_workflow"] = (
+        stats["downtime_duration"] / stats["active_workflows"]
+    )
 
-    # Add empty trace to 4th subplot to establish axes
+    return stats
+
+
+def add_metric_chart(fig, stats, row, x_range, y_column, color, y_title):
     fig.add_trace(
         go.Scatter(
-            x=[start_time, end_time],
-            y=[0, len(workflow_names) - 1],
+            x=stats["week_start"].dt.to_pydatetime(),
+            y=stats[y_column].values,
+            mode="lines+markers",
+            line=dict(color=color, width=3),
+            marker=dict(size=6, color=color),
+            showlegend=False,
+        ),
+        row=row,
+        col=1,
+    )
+
+    fig.update_xaxes(
+        type="date",
+        range=x_range,
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=False,
+        row=row,
+        col=1,
+    )
+
+    y_max = stats[y_column].max()
+    fig.update_yaxes(
+        range=[0, y_max * 1.1],
+        showgrid=True,
+        gridcolor="lightgray",
+        title_text=y_title,
+        row=row,
+        col=1,
+    )
+
+
+def add_failure_rates(fig, stats, x_range, row):
+    add_metric_chart(
+        fig, stats, row, x_range, "failure_rate", "#E74C3C", "Failure rate (%)"
+    )
+
+
+def add_mttr(fig, stats, x_range, row):
+    add_metric_chart(fig, stats, row, x_range, "recovery_time", "#3498DB", "MTTR (hrs)")
+
+
+def add_downtime(fig, stats, x_range, row):
+    add_metric_chart(
+        fig,
+        stats,
+        row,
+        x_range,
+        "downtime_per_workflow",
+        "#8E44AD",
+        "Downtime per<br>workflow (hrs)",
+    )
+
+
+def add_statuses(fig, spans, x_range, row=4):
+    def mk_shape(start, end, y, colour):
+        # Create exact pixel boundaries: 7px stripe + 1px gap
+        # y is workflow index, so stripe goes from y*8 to y*8+7 (7px high)
+        # leaving 1px gap before next stripe at (y+1)*8
+        return {
+            "type": "rect",
+            "x0": start,
+            "x1": end,
+            "y0": y * 8,
+            "y1": y * 8 + 7,
+            "fillcolor": colour,
+            "line": dict(width=0),
+            "layer": "below",
+            "xref": f"x{row}",
+            "yref": f"y{row}",
+        }
+
+    # Add empty trace to establish axes
+    # Use pixel coordinates: workflows range from 0 to (len(spans)-1)*8+7
+    max_y = (len(spans) - 1) * 8 + 7
+    fig.add_trace(
+        go.Scatter(
+            x=x_range,
+            y=[0, max_y],
             mode="markers",
             marker=dict(size=0.1, color="rgba(0,0,0,0)"),
             showlegend=False,
             hoverinfo="skip",
         ),
-        row=4,
+        row=row,
         col=1,
     )
 
-    # Note: Vertical reference line removed - fig.add_vline with row="all"
-    # causes coordinate corruption in subplot heatmaps
+    start_time, end_time = x_range
+    shapes = []
+    for i, runs in enumerate(spans.values()):
+        last_start, colour = start_time, "gray"
 
-    chart_width = 800
-    chart_height = 1000  # Increased height for four subplots
+        for timestamp, success in runs:
+            shapes.append(mk_shape(last_start, timestamp, i, colour))
+            last_start = timestamp
+            colour = "green" if success else "red"
 
-    # Apply shapes to the layout
-    fig.update_layout(shapes=all_shapes)
+        shapes.append(mk_shape(last_start, end_time, i, colour))
 
+    fig.update_layout(shapes=shapes)
+
+    fig.update_xaxes(
+        type="date",
+        range=x_range,
+        showgrid=True,
+        gridcolor="lightgray",
+        showticklabels=True,
+        ticklabelstandoff=20,
+        row=row,
+        col=1,
+    )
+
+    fig.update_yaxes(
+        showticklabels=False,
+        range=[-1, max_y + 1],
+        showgrid=False,
+        zeroline=False,
+        row=row,
+        col=1,
+    )
+
+
+def calculate_chart_dimensions(num_workflows, chart_width=800):
+    """Calculate chart dimensions to ensure whole pixel heights for workflow stripes."""
+    # Back to 8-pixel stripe height that worked (7px stripe + 1px gap)
+    stripe_height = 8  # 7px stripe + 1px gap
+
+    # Calculate status chart height needed for integer pixel stripes
+    status_chart_height = num_workflows * stripe_height
+
+    # Back to original working heights
+    stats_chart_height = 120  # Height for each of the 3 stats charts
+    total_stats_height = 3 * stats_chart_height
+
+    # Back to original margins
+    top_margin = 80
+    bottom_margin = 80
+    title_space = 40
+
+    # Calculate total height
+    total_height = (
+        top_margin
+        + title_space
+        + total_stats_height
+        + status_chart_height
+        + bottom_margin
+    )
+
+    # Calculate row height fractions
+    total_chart_area = total_stats_height + status_chart_height
+    stats_fraction = stats_chart_height / total_chart_area
+    status_fraction = status_chart_height / total_chart_area
+
+    return {
+        "total_height": total_height,
+        "chart_width": chart_width,
+        "row_heights": [
+            stats_fraction,
+            stats_fraction,
+            stats_fraction,
+            status_fraction,
+        ],
+        "stripe_height": stripe_height,
+    }
+
+
+def create_chart(dimensions):
+    """Create chart with calculated dimensions for pixel-perfect rendering."""
+    fig = make_subplots(
+        rows=4,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.02,
+        row_heights=dimensions["row_heights"],
+    )
     fig.update_layout(
         title="Workflow statistics (by week)",
-        height=chart_height,
-        width=chart_width,
+        height=dimensions["total_height"],
+        width=dimensions["chart_width"],
         showlegend=False,
         plot_bgcolor="white",
         margin=dict(l=60, r=20, t=80, b=80),
     )
+    return fig
 
-    # Update x-axis for all subplots (shared x-axis)
-    # IMPORTANT: Use consistent x-axis range across all subplots to prevent coordinate corruption
-    fig.update_xaxes(
-        type="date",
-        range=[start_time, end_time],  # CHANGED: Use same range as heatmap
-        showgrid=True,
-        gridcolor="lightgray",
-        showticklabels=False,
-        row=1,
-        col=1,
+
+def get_workflow_history(_) -> str:
+    end_time = datetime.now(timezone.utc)
+    start_time = end_time - timedelta(days=365)
+
+    runs = get_workflow_runs(start_time)
+    runs = remove_excluded_workflows(runs)
+    runs = strip_repo(runs)
+    runs = convert_states(runs)
+    workflows = build_workflows(runs)
+    workflows = add_recoveries(workflows)
+    spans = build_spans(workflows)
+    stats = calculate_stats(workflows)
+
+    # Calculate dimensions for pixel-perfect rendering
+    num_workflows = len(spans)
+    dimensions = calculate_chart_dimensions(num_workflows)
+
+    x_range = [start_time, end_time]
+    fig = create_chart(dimensions)
+    add_failure_rates(fig, stats, x_range, row=1)
+    add_mttr(fig, stats, x_range, row=2)
+    add_downtime(fig, stats, x_range, row=3)
+    add_statuses(fig, spans, x_range, row=4)
+
+    chart_path = "workflow-history.png"
+    fig.write_image(
+        chart_path, width=dimensions["chart_width"], height=dimensions["total_height"]
     )
 
-    fig.update_yaxes(
-        range=[0, weekly_stats["failure_rate"].max() * 1.1],
-        showgrid=True,
-        gridcolor="lightgray",
-        title_text="Failure rate (%)",
-        row=1,
-        col=1,
+    return json.dumps(
+        get_basic_header_and_text_blocks(
+            header_text="Workflow History",
+            texts=[f"Workflow history saved to: {chart_path}"],
+        )
     )
-
-    # Add axis configuration for MTTR subplot
-    fig.update_xaxes(
-        type="date",
-        range=[start_time, end_time],  # CONSISTENT: Same range as other subplots
-        showgrid=True,
-        gridcolor="lightgray",
-        showticklabels=False,
-        row=2,
-        col=1,
-    )
-
-    fig.update_yaxes(
-        range=[0, weekly_stats["recovery_time_hours"].max() * 1.1]
-        if weekly_stats["recovery_time_hours"].max() > 0
-        else [0, 1],
-        showgrid=True,
-        gridcolor="lightgray",
-        title_text="MTTR (hrs)",
-        row=2,
-        col=1,
-    )
-
-    # Add axis configuration for downtime subplot
-    fig.update_xaxes(
-        type="date",
-        range=[start_time, end_time],  # CONSISTENT: Same range as other subplots
-        showgrid=True,
-        gridcolor="lightgray",
-        showticklabels=False,
-        row=3,
-        col=1,
-    )
-
-    fig.update_yaxes(
-        range=[0, weekly_stats["downtime_per_workflow"].max() * 1.1]
-        if weekly_stats["downtime_per_workflow"].max() > 0
-        else [0, 1],
-        showgrid=True,
-        gridcolor="lightgray",
-        title_text="Downtime per<br>workflow (hrs)",
-        row=3,
-        col=1,
-    )
-
-    fig.update_xaxes(
-        type="date",
-        range=[start_time, end_time],
-        showgrid=True,
-        gridcolor="lightgray",
-        showticklabels=True,
-        row=4,
-        col=1,
-    )
-
-    fig.update_yaxes(
-        showticklabels=False,
-        range=[-0.5, len(workflow_names) - 0.5],
-        showgrid=False,
-        zeroline=False,
-        row=4,
-        col=1,
-    )
-
-    output_path = "workflow-history.png"
-    fig.write_image(output_path, width=chart_width, height=chart_height)
-
-    return output_path
 
 
 def get_usage_text(args) -> str:
@@ -951,6 +902,7 @@ if __name__ == "__main__":
         args = get_command_line_parser().parse_args()
         print(args.func(args))
     except Exception as e:
+        raise e
         print(
             json.dumps(
                 get_basic_header_and_text_blocks(
