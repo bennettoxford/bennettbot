@@ -2,6 +2,7 @@ TEAMS = [
     "Tech shared",
     "Team REX",
     "Team RAP",
+    "Team PIN",
 ]
 
 REPOS = {
@@ -32,6 +33,10 @@ REPOS = {
     "ehrql": {
         "org": "opensafely-core",
         "team": "Team RAP",
+    },
+    "ethelred": {
+        "org": "opensafely-core",
+        "team": "Team PIN",
     },
     "job-runner": {
         "org": "opensafely-core",
