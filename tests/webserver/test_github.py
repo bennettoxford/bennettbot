@@ -21,6 +21,8 @@ PAYLOAD_PR_CLOSED = '{"action": "closed", "pull_request": {"merged": true}}'
 PAYLOAD_PR_CLOSED_UNMERGED = '{"action": "closed", "pull_request": {"merged": false}}'
 PAYLOAD_PR_OPENED = '{"action": "opened", "pull_request": {}}'
 PAYLOAD_ISSUE_OPENED = '{"action": "opened", "issue": {}}'
+PAYLOAD_WORKFLOW_RUN_COMPLETED = '{"action": "completed", "workflow_run": {"name": "CI", "status": "completed", "conclusion": "success", "head_branch": "main"}, "repository": {"full_name": "owner/repo"}}'
+PAYLOAD_WORKFLOW_RUN_IN_PROGRESS = '{"action": "in_progress", "workflow_run": {"name": "CI", "status": "in_progress", "head_branch": "main"}, "repository": {"full_name": "owner/repo"}}'
 
 
 dummy_config = build_config(
@@ -130,6 +132,35 @@ def test_unknown_project(web_client):
     )
     assert rsp.status_code == 400
     assert rsp.data == b"Unknown project: another-name"
+
+
+@mocketize(strict_mode=True)
+def test_workflow_run_completed(web_client):
+    mocket_register({"chat.postMessage": [{"ok": True}]})
+    headers = {"X-Hub-Signature": compute_signature(PAYLOAD_WORKFLOW_RUN_COMPLETED)}
+
+    with patch("bennettbot.webserver.github.config", new=dummy_config):
+        rsp = web_client.post(
+            "/github/test/", data=PAYLOAD_WORKFLOW_RUN_COMPLETED, headers=headers
+        )
+
+    assert rsp.status_code == 200
+    assert_slack_client_sends_messages(
+        messages_kwargs=[
+            {
+                "text": "✅ Workflow 'CI' success in owner/repo on main",
+                "channel": "#some-team",
+            }
+        ]
+    )
+
+
+def test_workflow_run_in_progress(web_client):
+    headers = {"X-Hub-Signature": compute_signature(PAYLOAD_WORKFLOW_RUN_IN_PROGRESS)}
+    rsp = web_client.post(
+        "/github/test/", data=PAYLOAD_WORKFLOW_RUN_IN_PROGRESS, headers=headers
+    )
+    assert rsp.status_code == 200
 
 
 def compute_signature(payload):

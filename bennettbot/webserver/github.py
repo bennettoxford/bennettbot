@@ -10,12 +10,14 @@ from ..slack import notify_slack, slack_web_client
 
 
 def handle_github_webhook(project):
-    """Respond to webhooks from GitHub, and schedule a deploy of
-    the relevant project if required.
+    """Respond to webhooks from GitHub.
 
-    The webhook is configured at:
+    Webhooks are configured at:
 
+    - bennettoxford/openprescribing (pull request events):
         https://github.com/bennettoxford/openprescribing/settings/hooks/85994427
+    - opensafely-core/ethelred (workflow run events):
+        https://github.com/opensafely-core/ethelred/settings/hooks/556845180
     """
 
     verify_signature(request)
@@ -24,6 +26,8 @@ def handle_github_webhook(project):
     payload = json.loads(request.data.decode())
     if should_deploy(payload):
         schedule_deploy(project)
+    elif should_handle_workflow_run(payload):
+        handle_workflow_run_completion(project, payload)
 
     return ""
 
@@ -95,3 +99,49 @@ def schedule_deploy(project):
                 f"`{project} deploy` to force a deployment"
             ),
         )
+
+
+def should_handle_workflow_run(payload):
+    """Return whether webhook is notification of completed workflow run."""
+    return (
+        payload.get("action") == "completed"
+        and payload.get("workflow_run", {}).get("status") == "completed"
+    )
+
+
+def handle_workflow_run_completion(project, payload):
+    """Handle a completed workflow run webhook."""
+    workflow_run = payload["workflow_run"]
+    repository = payload["repository"]
+
+    logger.info(
+        "Workflow run completed",
+        project=project,
+        workflow_name=workflow_run["name"],
+        conclusion=workflow_run["conclusion"],
+        repository=repository["full_name"],
+        branch=workflow_run["head_branch"],
+    )
+
+    # Send notification to Slack
+    channel = config["default_channel"][project]
+    conclusion = workflow_run["conclusion"]
+    workflow_name = workflow_run["name"]
+    repo_name = repository["full_name"]
+    branch = workflow_run["head_branch"]
+
+    # Create appropriate emoji based on conclusion
+    emoji_map = {
+        "success": "✅",
+        "failure": "❌",
+        "cancelled": "🚫",
+        "skipped": "⏭️",
+        "timed_out": "⏰",
+    }
+    emoji = emoji_map.get(conclusion, "❓")
+
+    message = (
+        f"{emoji} Workflow '{workflow_name}' {conclusion} in {repo_name} on {branch}"
+    )
+
+    notify_slack(slack_web_client(), channel, message)
