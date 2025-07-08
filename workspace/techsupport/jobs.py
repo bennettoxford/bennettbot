@@ -24,7 +24,8 @@ def get_dates_from_config():
     end = None
     config = config_file()
     if config.exists():
-        config_dict = json.load(config_file().open())
+        with config.open() as f:
+            config_dict = json.load(f)
         start = convert_date(config_dict["start"])
         end = convert_date(config_dict["end"])
     return start, end
