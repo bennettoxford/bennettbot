@@ -21,7 +21,8 @@ def handle_github_webhook(project):
     verify_signature(request)
     logger.info("Received webhook", project=project)
 
-    if should_deploy(request):
+    payload = json.loads(request.data.decode())
+    if should_deploy(payload):
         schedule_deploy(project)
 
     return ""
@@ -53,15 +54,13 @@ def verify_signature(request):
         abort(403)
 
 
-def should_deploy(request):
+def should_deploy(payload):
     """Return whether webhook is notification of merged PR."""
 
-    data = json.loads(request.data.decode())
-
-    if not data.get("pull_request"):
+    if not payload.get("pull_request"):
         return False
 
-    return data["action"] == "closed" and data["pull_request"]["merged"]
+    return payload["action"] == "closed" and payload["pull_request"]["merged"]
 
 
 def schedule_deploy(project):
