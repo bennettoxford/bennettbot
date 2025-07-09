@@ -46,7 +46,10 @@ env = [
     "DATA_TEAM_GITHUB_API_TOKEN=dummy-token"
 ]
 filterwarnings = [
+    "error",
     "ignore:distutils Version classes are deprecated:DeprecationWarning:pytest_freezegun",
+    # Ignore unclosed socket warnings from mocket library (third-party issue)
+    "ignore:Exception ignored in.*<socket.socket:pytest.PytestUnraisableExceptionWarning",
 ]
 
 [tool.ruff]

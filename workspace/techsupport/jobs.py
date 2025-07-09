@@ -24,7 +24,7 @@ def get_dates_from_config():
     end = None
     config = config_file()
     if config.exists():
-        config_dict = json.load(config_file().open())
+        config_dict = json.loads(config.read_text())
         start = convert_date(config_dict["start"])
         end = convert_date(config_dict["end"])
     return start, end
@@ -42,8 +42,7 @@ def out_of_office_on(start_date, end_date):
     elif end < today():
         return "Error: Can't set out of office in the past"
 
-    with config_file().open("w") as outfile:
-        json.dump(config, outfile)
+    config_file().write_text(json.dumps(config))
     if start <= today():
         return f"Tech support out of office now ON until {end_date}"
     return f"Tech support out of office scheduled from {start_date} until {end_date}"

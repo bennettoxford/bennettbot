@@ -1,5 +1,6 @@
 import functools
 import json
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,6 +10,9 @@ from mocket.mockhttp import Entry
 
 from workspace.workflows import jobs
 
+
+# Use current year to avoid SystemTimeWarning when frozen time is too far in the past
+THIS_YEAR = datetime.now().year
 
 WORKFLOWS_MAIN = {
     82728346: "CI",
@@ -24,7 +28,7 @@ WORKFLOWS = {
 
 CACHE = {
     "opensafely-core/airlock": {
-        "timestamp": "2023-09-30T09:00:08Z",
+        "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
         "conclusions": {str(key): "success" for key in WORKFLOWS_MAIN.keys()},
     }
 }
@@ -98,7 +102,7 @@ def use_mock_results(patch_settings):
             keys = sorted(list(WORKFLOWS_MAIN.keys()))
             mock_cache = {
                 f"{r['org']}/{r['repo']}": {
-                    "timestamp": "2023-09-30T09:00:08Z",
+                    "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
                     "conclusions": {
                         str(keys[i]): conc for i, conc in enumerate(r["conclusions"])
                     },
@@ -377,7 +381,7 @@ def test_get_runs_since_last_retrieval(mock_airlock_reporter, cache_path):
         "branch": ["main"],
         "per_page": ["100"],
         "format": ["json"],
-        "created": [">=2023-09-30T09:00:08Z"],
+        "created": [f">={THIS_YEAR}-01-15T09:00:08Z"],
     }
 
 
@@ -401,7 +405,7 @@ def test_some_workflows_ignored(mock_airlock_reporter, cache_path):
 def test_some_workflows_not_found(mock_airlock_reporter, cache_path):
     mock_airlock_reporter.workflows[1234] = "Workflow that only exists in the cache"
     mock_airlock_reporter.cache = {
-        "timestamp": "2023-09-30T09:00:08Z",
+        "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
         "conclusions": {"1234": "running"},
     }
 
@@ -425,7 +429,7 @@ def test_get_runs_beyond_last_retrieval_if_not_all_successful(
 ):
     mock_airlock_reporter.workflows[1234] = "Some failing workflow"
     mock_airlock_reporter.cache = {
-        "timestamp": "2023-09-30T09:00:08Z",
+        "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
         "conclusions": {"1234": conclusion},
     }
     mock_airlock_reporter.workflow_ids = set(mock_airlock_reporter.workflows.keys())
@@ -445,7 +449,7 @@ def test_get_runs_beyond_last_retrieval_if_not_all_successful(
 def test_cache_creation(mock_write, mock_airlock_reporter, freezer):
     mock_write.return_value = None  # Disable writing to file and test separately
     assert mock_airlock_reporter.cache == {}
-    freezer.move_to("2023-09-30 09:00:08")
+    freezer.move_to(f"{THIS_YEAR}-01-15 09:00:08")
     mock_airlock_reporter.get_latest_conclusions()
     assert mock_airlock_reporter.cache == CACHE["opensafely-core/airlock"]
 
