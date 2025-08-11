@@ -20,7 +20,7 @@ def test_weekly_rota_odd_week(freezer):
         },
         {
             "text": {
-                "text": "Monday: Jon (backup: Mike)\nWednesday: Steve (backup: Mary)\nFriday: Katie (backup: Thomas)",
+                "text": "Monday: Nishtha (backup: Mike)\nWednesday: Steve (backup: Mary)\nFriday: Katie (backup: Thomas)",
                 "type": "mrkdwn",
             },
             "type": "section",
@@ -39,7 +39,7 @@ def test_weekly_rota_even_week(freezer):
         },
         {
             "text": {
-                "text": "Monday: Mike (backup: Jon)\nWednesday: Mary (backup: Steve)\nFriday: Thomas (backup: Katie)",
+                "text": "Monday: Mike (backup: Nishtha)\nWednesday: Mary (backup: Steve)\nFriday: Thomas (backup: Katie)",
                 "type": "mrkdwn",
             },
             "type": "section",
@@ -58,7 +58,7 @@ def test_daily_rota_odd_week(freezer):
         },
         {
             "text": {
-                "text": "Monday: <@U023ZG5H24R> (backup: Mike)",
+                "text": "Monday: <@U09863KPURF> (backup: Mike)",
                 "type": "mrkdwn",
             },
             "type": "section",
