@@ -7,7 +7,7 @@ from workspace.utils.people import People
 
 
 PAIRS = {
-    "monday": [People.MIKE, People.JON],
+    "monday": [People.MIKE, People.NISHTHA],
     "wednesday": [People.MARY, People.STEVE],
     "friday": [People.THOMAS, People.KATIE],
 }

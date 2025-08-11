@@ -63,6 +63,7 @@ class People(metaclass=PersonCollection):
     MARY = Person("Mary-Anya", "U07LKQ06Q8L")
     MILAN = Person("milanwiedemann", "U02GPV8NNU9")
     MIKE = Person("mikerkelly", "U07KKL4PJJY")
+    NISHTHA = Person("nishtha-kalra", "U09863KPURF")
     PETER = Person("inglesp", "U4N1YPAP7")
     PROVIDENCE = Person("Providence-o", "U07AGDM6ZJN")
     RICHARD = Person("rw251", "U07QEMHUUMD")
