@@ -89,7 +89,7 @@ class People(metaclass=PersonCollection):
 # point. If you need to change this list, consider redesigning that class to
 # include an offset.
 TEAM_REX = [
-    People.JON,
+    People.NISHTHA,
     People.KATIE,
     People.LUCY,
     People.STEVE,
