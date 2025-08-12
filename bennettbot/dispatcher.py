@@ -127,8 +127,8 @@ class JobDispatcher:
         """Send notification that command has ended, reporting stdout if
         required."""
 
-        error = False
-        if rc == 0:
+        error = rc != 0
+        if not error:
             if self.job_config["report_stdout"]:
                 with open(self.stdout_path) as f:
                     if self.job_config["report_format"] == "blocks":
@@ -151,14 +151,13 @@ class JobDispatcher:
             )
             if not self.job["is_im"]:
                 msg += "\nCalling tech-support."
-            error = True
 
         slack_message = notify_slack(
             self.slack_client,
             self.job["channel"],
             msg,
             thread_ts=self.job["thread_ts"],
-            message_format=self.job_config["report_format"] if rc == 0 else "text",
+            message_format=self.job_config["report_format"] if not error else "text",
         )
         if error and not self.job["is_im"]:
             # If the command failed, repost it to tech-support
