@@ -128,6 +128,9 @@ class JobDispatcher:
         required."""
 
         error = rc != 0
+        # Don't repost to tech-support if we're in a DM with the bot, because no-one
+        # else will be able to read the reposted message
+        repost_to_tech_support_on_error = not self.job["is_im"]
         if not error:
             if self.job_config["report_stdout"]:
                 with open(self.stdout_path) as f:
@@ -149,7 +152,7 @@ class JobDispatcher:
                 f"* `@{settings.SLACK_APP_USERNAME} showlogs tail error {self.host_log_dir}`\n"
                 f"* `@{settings.SLACK_APP_USERNAME} showlogs all output {self.host_log_dir}`\n"
             )
-            if not self.job["is_im"]:
+            if repost_to_tech_support_on_error:
                 msg += "\nCalling tech-support."
 
         slack_message = notify_slack(
@@ -159,10 +162,8 @@ class JobDispatcher:
             thread_ts=self.job["thread_ts"],
             message_format=self.job_config["report_format"] if not error else "text",
         )
-        if error and not self.job["is_im"]:
-            # If the command failed, repost it to tech-support
-            # Don't repost to tech-support if we're in a DM with the bot, because no-one
-            # else will be able to read the reposted message
+        if error and repost_to_tech_support_on_error:
+            # Repost failed commands to tech-support if needed
             # Note that the bot won't register messages from itself, so we can't just
             # rely on the tech-support listener
             message_url = self.slack_client.chat_getPermalink(
