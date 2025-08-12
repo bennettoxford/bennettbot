@@ -28,6 +28,10 @@ raw_config = {
             "bad_job": {
                 "run_args_template": "cat no-poem",
             },
+            "unsupported_bad_job": {
+                "run_args_template": "cat no-poem",
+                "call_tech_support_on_error": False,
+            },
             "really_bad_job": {
                 "run_args_template": "dog poem",
             },

@@ -128,9 +128,12 @@ class JobDispatcher:
         required."""
 
         error = rc != 0
-        # Don't repost to tech-support if we're in a DM with the bot, because no-one
-        # else will be able to read the reposted message
-        repost_to_tech_support_on_error = not self.job["is_im"]
+        repost_to_tech_support_on_error = (
+            # Call tech-support unless specified otherwise in the job config
+            # But not if we're in a DM with the bot, because no-one
+            # else will be able to read the reposted message
+            self.job_config["call_tech_support_on_error"] and not self.job["is_im"]
+        )
         if not error:
             if self.job_config["report_stdout"]:
                 with open(self.stdout_path) as f:
