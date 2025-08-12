@@ -29,6 +29,10 @@ def test_build_config():
             "jobs": {
                 "good_job": {"run_args_template": "cat {poem}", "report_stdout": True},
                 "bad_job": {"run_args_template": "dog {poem}", "report_success": False},
+                "unsupported_bad_job": {
+                    "run_args_template": "dog {poem}",
+                    "call_tech_support_on_error": False,
+                },
             },
             "slack": [
                 {
@@ -76,42 +80,56 @@ def test_build_config():
     assert config == {
         "jobs": {
             "ns1_good_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "cat {poem}",
                 "report_stdout": False,
                 "report_format": "text",
                 "report_success": True,
             },
             "ns1_bad_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "dog {poem}",
                 "report_stdout": False,
                 "report_format": "text",
                 "report_success": True,
             },
             "ns2_good_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "cat {poem}",
                 "report_stdout": True,
                 "report_format": "text",
                 "report_success": True,
             },
             "ns2_bad_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "dog {poem}",
                 "report_stdout": False,
                 "report_format": "text",
                 "report_success": False,
             },
+            "ns2_unsupported_bad_job": {
+                "call_tech_support_on_error": False,
+                "run_args_template": "dog {poem}",
+                "report_stdout": False,
+                "report_format": "text",
+                "report_success": True,
+            },
             "ns3_good_python_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "python jobs.py",
                 "report_stdout": True,
                 "report_format": "text",
                 "report_success": True,
             },
             "ns3_bad_python_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "python jobs.py",
                 "report_stdout": True,
                 "report_format": "text",
                 "report_success": True,
             },
             "test_good_job": {
+                "call_tech_support_on_error": True,
                 "run_args_template": "echo Hello",
                 "report_stdout": False,
                 "report_format": "text",
