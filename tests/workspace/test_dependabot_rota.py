@@ -45,7 +45,7 @@ def test_rota_report_on_monday(freezer, monkeypatch):
         },
         {
             "text": {
-                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Jon",
+                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Katie",
                 "type": "mrkdwn",
             },
             "type": "section",
@@ -77,7 +77,7 @@ def test_rota_report_on_tuesday(freezer, monkeypatch):
         },
         {
             "text": {
-                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Jon",
+                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Katie",
                 "type": "mrkdwn",
             },
             "type": "section",
