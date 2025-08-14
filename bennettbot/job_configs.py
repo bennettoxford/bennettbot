@@ -619,6 +619,9 @@ def build_config(raw_config):
             job_config["report_stdout"] = job_config.get("report_stdout", False)
             job_config["report_format"] = job_config.get("report_format", "text")
             job_config["report_success"] = job_config.get("report_success", True)
+            job_config["call_tech_support_on_error"] = job_config.get(
+                "call_tech_support_on_error", True
+            )
             namespaced_job_type = f"{namespace}_{job_type}"
             validate_job_config(namespaced_job_type, job_config)
             config["jobs"][namespaced_job_type] = job_config
@@ -693,6 +696,7 @@ def validate_job_config(job_type, job_config):
         "report_stdout",
         "report_format",
         "report_success",
+        "call_tech_support_on_error",
     }
 
     if missing_keys := (expected_keys - job_config.keys()):

@@ -219,6 +219,26 @@ def test_job_failure():
         assert f.read() == "cat: no-poem: No such file or directory\n"
 
 
+def test_job_failure_but_configured_not_to_call_tech_support():
+    log_dir = build_log_dir("test_unsupported_bad_job")
+
+    scheduler.schedule_job("test_unsupported_bad_job", {}, "channel", TS, 0)
+    job = scheduler.reserve_job()
+    do_job(slack_web_client(), job)
+    assert_slack_client_sends_messages(
+        messages_kwargs=[
+            {"channel": "logs", "text": "about to start"},
+            {"channel": "channel", "text": "failed"},
+        ]
+    )
+
+    with open(os.path.join(log_dir, "stdout")) as f:
+        assert f.read() == ""
+
+    with open(os.path.join(log_dir, "stderr")) as f:
+        assert f.read() == "cat: no-poem: No such file or directory\n"
+
+
 def test_job_failure_in_dm():
     log_dir = build_log_dir("test_bad_job")
 

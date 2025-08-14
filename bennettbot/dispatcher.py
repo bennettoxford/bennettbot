@@ -127,8 +127,14 @@ class JobDispatcher:
         """Send notification that command has ended, reporting stdout if
         required."""
 
-        error = False
-        if rc == 0:
+        error = rc != 0
+        repost_to_tech_support_on_error = (
+            # Call tech-support unless specified otherwise in the job config
+            # But not if we're in a DM with the bot, because no-one
+            # else will be able to read the reposted message
+            self.job_config["call_tech_support_on_error"] and not self.job["is_im"]
+        )
+        if not error:
             if self.job_config["report_stdout"]:
                 with open(self.stdout_path) as f:
                     if self.job_config["report_format"] == "blocks":
@@ -149,21 +155,18 @@ class JobDispatcher:
                 f"* `@{settings.SLACK_APP_USERNAME} showlogs tail error {self.host_log_dir}`\n"
                 f"* `@{settings.SLACK_APP_USERNAME} showlogs all output {self.host_log_dir}`\n"
             )
-            if not self.job["is_im"]:
+            if repost_to_tech_support_on_error:
                 msg += "\nCalling tech-support."
-            error = True
 
         slack_message = notify_slack(
             self.slack_client,
             self.job["channel"],
             msg,
             thread_ts=self.job["thread_ts"],
-            message_format=self.job_config["report_format"] if rc == 0 else "text",
+            message_format=self.job_config["report_format"] if not error else "text",
         )
-        if error and not self.job["is_im"]:
-            # If the command failed, repost it to tech-support
-            # Don't repost to tech-support if we're in a DM with the bot, because no-one
-            # else will be able to read the reposted message
+        if error and repost_to_tech_support_on_error:
+            # Repost failed commands to tech-support if needed
             # Note that the bot won't register messages from itself, so we can't just
             # rely on the tech-support listener
             message_url = self.slack_client.chat_getPermalink(
