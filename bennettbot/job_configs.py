@@ -120,49 +120,60 @@ raw_config = {
         "restricted": True,
         "description": "OpenPrescribing deployment and tools",
         "fabfile": "https://raw.githubusercontent.com/bennettoxford/openprescribing/main/fabfile.py",
-        "default_channel": "#team-rap",
+        "default_channel": "#openprescribing",
         "jobs": {
             "deploy": {
                 "run_args_template": "fab deploy:production",
                 "report_success": False,
+                "call_tech_support_on_error": False,
             },
             "restart": {
                 "run_args_template": "fab restart:production",
                 "report_success": False,
+                "call_tech_support_on_error": False,
             },
             "cache_clear": {
-                "run_args_template": "fab clear_cloudflare"
+                "run_args_template": "fab clear_cloudflare",
+                "call_tech_support_on_error": False,
             },
             "ncso_import": {
-                "run_args_template": "fab call_management_command:fetch_and_import_ncso_concessions,production"
+                "run_args_template": "fab call_management_command:fetch_and_import_ncso_concessions,production",
+                "call_tech_support_on_error": False,
             },
             "ncso_report": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:summarise_ncso_concessions,production",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "ncso_reconcile": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:reconcile_ncso_concession,production,{concession_id},{vmpp_id}",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "ncso_send_alerts": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:send_ncso_concessions_alerts,production,--quiet",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "import_measure_definition": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:import_measures,production,--print-confirmation,--definitions_only,--measure,{measure_id}",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "recalculate_measure": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:import_measures,production,--print-confirmation,--measure,{measure_id}",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "preview_measure": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:preview_measure,production,{github_measure_url}",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
             "delete_preview": {
                 "run_args_template": "fab --hide=running,stdout,status call_management_command:delete_measure,production,{measure_id}",
                 "report_stdout": True,
+                "call_tech_support_on_error": False,
             },
         },
         "slack": [
