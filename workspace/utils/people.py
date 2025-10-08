@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(order=True)
@@ -7,7 +6,7 @@ class Person:
     github_username: str
     slack_username: str
     # Optional because this is mostly set in PersonCollection.__init__().
-    human_readable: Optional[str] = ""
+    human_readable: str = ""
 
     @property
     def formatted_slack_username(self) -> str:
