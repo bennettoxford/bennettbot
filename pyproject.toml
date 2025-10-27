@@ -1,3 +1,24 @@
+[project]
+name = "bennettbot"
+version = "0.0.1"
+description = "Our pet slackbot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  # Main prod requirements
+  "environs",
+  "fab-classic",
+  "flask",
+  "gunicorn",
+  "requests",
+  "slack_bolt",
+  "structlog",
+  # for op commands
+  "django-dotenv",
+  # for commands that read from Google Sheets
+  "google-api-python-client",
+]
+
 [tool.coverage.run]
 branch = true
 dynamic_context = "test_function"
@@ -87,3 +108,20 @@ lines-after-imports = 2
 
 [tool.ruff.lint.per-file-ignores]
 "gunicorn/conf.py" = ["INP001"]
+
+# Note: any `exclude-newer-package` timestamps should be removed if > 7 days old
+# See https://github.com/opensafely-core/repo-template/blob/main/DEVELOPERS.md for details
+[tool.uv]
+exclude-newer = "2025-10-21T00:00:00Z"
+exclude-newer-package = {}
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "pre-commit",
+  "pytest",
+  "pytest-cov",
+  "pytest-env",
+  "pytest-freezer",
+  "mocket",
+]
