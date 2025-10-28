@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .connection import get_connection
 from .logger import log_call
@@ -210,7 +210,7 @@ def get_suppressions():
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _convert_job_args_from_json(job):

@@ -1,6 +1,6 @@
 import random
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Event
 
 from slack_bolt import App, BoltResponse
@@ -645,11 +645,11 @@ def _get_datetime(hhmm):
         return
 
     today = _now()
-    return datetime(today.year, today.month, today.day, h, m, tzinfo=timezone.utc)
+    return datetime(today.year, today.month, today.day, h, m, tzinfo=UTC)
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 if __name__ == "__main__":
