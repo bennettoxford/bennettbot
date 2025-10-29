@@ -1,8 +1,8 @@
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
-T0 = datetime(2019, 12, 10, 11, 12, 13, tzinfo=timezone.utc)
+T0 = datetime(2019, 12, 10, 11, 12, 13, tzinfo=UTC)
 TS = str(time.mktime(T0.timetuple()))
 
 

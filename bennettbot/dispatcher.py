@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from multiprocessing import Process
 from pathlib import Path
 
@@ -202,7 +202,7 @@ class JobDispatcher:
 
     def set_up_log_dir(self):
         """Create directory for recording stdout/stderr."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         job_log_path = Path(self.job["type"]) / timestamp
         self.log_dir = settings.LOGS_DIR / job_log_path
         self.host_log_dir = settings.HOST_LOGS_DIR / job_log_path
