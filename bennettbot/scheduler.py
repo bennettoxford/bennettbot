@@ -1,4 +1,5 @@
 import json
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 
 from .connection import get_connection
@@ -18,8 +19,6 @@ def schedule_job(type_, args, channel, thread_ts, delay_seconds, is_im=False):
     Returns a boolean indicating whether an existing job was already running.
     """
 
-    conn = get_connection()
-
     sql = """
     SELECT id, started_at IS NOT NULL AS has_started
     FROM job
@@ -30,40 +29,42 @@ def schedule_job(type_, args, channel, thread_ts, delay_seconds, is_im=False):
     start_after = _now() + timedelta(seconds=delay_seconds)
     args = json.dumps(args)
 
-    existing_jobs = list(conn.execute(sql, [type_]))
-    existing_job_running = False
-    if len(existing_jobs) == 0:
-        _create_job(type_, args, channel, thread_ts, start_after, is_im)
-    elif len(existing_jobs) == 1:
-        job = existing_jobs[0]
-        if job["has_started"]:
+    with closing(get_connection()) as conn:
+        with conn:
+            existing_jobs = list(conn.execute(sql, [type_]))
+        existing_job_running = False
+        if len(existing_jobs) == 0:
+            _create_job(conn, type_, args, channel, thread_ts, start_after, is_im)
+        elif len(existing_jobs) == 1:
+            job = existing_jobs[0]
+            if job["has_started"]:
+                existing_job_running = True
+                _create_job(conn, type_, args, channel, thread_ts, start_after, is_im)
+            else:
+                id_ = job["id"]
+                _update_job(conn, id_, args, channel, thread_ts, start_after)
+        elif len(existing_jobs) == 2:
+            assert not existing_jobs[0]["has_started"]
+            assert existing_jobs[1]["has_started"]
             existing_job_running = True
-            _create_job(type_, args, channel, thread_ts, start_after, is_im)
+            id_ = existing_jobs[0]["id"]
+            _update_job(conn, id_, args, channel, thread_ts, start_after)
         else:
-            id_ = job["id"]
-            _update_job(id_, args, channel, thread_ts, start_after)
-    elif len(existing_jobs) == 2:
-        assert not existing_jobs[0]["has_started"]
-        assert existing_jobs[1]["has_started"]
-        existing_job_running = True
-        id_ = existing_jobs[0]["id"]
-        _update_job(id_, args, channel, thread_ts, start_after)
-    else:
-        assert False
+            assert False
 
     return existing_job_running
 
 
-def _create_job(type_, args, channel, thread_ts, start_after, is_im):
-    with get_connection() as conn:
+def _create_job(conn, type_, args, channel, thread_ts, start_after, is_im):
+    with conn:
         conn.execute(
             "INSERT INTO job (type, args, channel, thread_ts, start_after, is_im) VALUES (?, ?, ?, ?, ?, ?)",
             [type_, args, channel, thread_ts, start_after, is_im],
         )
 
 
-def _update_job(id_, args, channel, thread_ts, start_after):
-    with get_connection() as conn:
+def _update_job(conn, id_, args, channel, thread_ts, start_after):
+    with conn:
         conn.execute(
             "UPDATE job SET args = ?, channel = ?, thread_ts = ?, start_after = ? WHERE id = ?",
             [args, channel, thread_ts, start_after, id_],
@@ -74,27 +75,32 @@ def _update_job(id_, args, channel, thread_ts, start_after):
 def cancel_job(type_):
     """Cancel scheduled job of given type."""
 
-    with get_connection() as conn:
-        conn.execute("DELETE FROM job WHERE type = ? AND started_at IS NULL", [type_])
+    with closing(get_connection()) as conn:
+        with conn:
+            conn.execute(
+                "DELETE FROM job WHERE type = ? AND started_at IS NULL", [type_]
+            )
 
 
 @log_call
 def schedule_suppression(job_type, start_at, end_at):
     """Schedule suppression for jobs of given type."""
 
-    with get_connection() as conn:
-        conn.execute(
-            "INSERT INTO suppression (job_type, start_at, end_at) VALUES (?, ?, ?)",
-            [job_type, start_at, end_at],
-        )
+    with closing(get_connection()) as conn:
+        with conn:
+            conn.execute(
+                "INSERT INTO suppression (job_type, start_at, end_at) VALUES (?, ?, ?)",
+                [job_type, start_at, end_at],
+            )
 
 
 @log_call
 def cancel_suppressions(job_type):
     """Cancel suppressions for jobs of given type."""
 
-    with get_connection() as conn:
-        conn.execute("DELETE FROM suppression WHERE job_type = ?", [job_type])
+    with closing(get_connection()) as conn:
+        with conn:
+            conn.execute("DELETE FROM suppression WHERE job_type = ?", [job_type])
 
 
 # @log_call
@@ -104,8 +110,9 @@ def remove_expired_suppressions():
     This is not logged because it is called every second by the dispatcher.
     """
 
-    with get_connection() as conn:
-        conn.execute("DELETE FROM suppression WHERE end_at < ?", [_now()])
+    with closing(get_connection()) as conn:
+        with conn:
+            conn.execute("DELETE FROM suppression WHERE end_at < ?", [_now()])
 
 
 # @log_call
@@ -121,8 +128,6 @@ def reserve_job():
 
     This is not logged because it is called every second by the dispatcher.
     """
-
-    conn = get_connection()
 
     sql = """
     WITH running_job_types AS (
@@ -149,15 +154,16 @@ def reserve_job():
     """
 
     now = _now()
-    results = list(conn.execute(sql, [now, now]))
+    with closing(get_connection()) as conn:
+        with conn:
+            results = list(conn.execute(sql, [now, now]))
 
-    if not results:
-        return None
+        if not results:
+            return None
 
-    job_id = results[0]["id"]
-    with conn:
-        conn.execute("UPDATE job SET started_at = ? WHERE id = ?", [now, job_id])
-
+        job_id = results[0]["id"]
+        with conn:
+            conn.execute("UPDATE job SET started_at = ? WHERE id = ?", [now, job_id])
     return job_id
 
 
@@ -165,16 +171,18 @@ def reserve_job():
 def mark_job_done(job_id):
     """Remove job from job table."""
 
-    with get_connection() as conn:
-        conn.execute("DELETE FROM job WHERE id = ?", [job_id])
+    with closing(get_connection()) as conn:
+        with conn:
+            conn.execute("DELETE FROM job WHERE id = ?", [job_id])
 
 
 @log_call
 def get_job(job_id):
     """Retrieve job from job table."""
 
-    conn = get_connection()
-    job = list(conn.execute("SELECT * FROM job WHERE id = ?", [job_id]))[0]
+    with closing(get_connection()) as conn:
+        with conn:
+            job = list(conn.execute("SELECT * FROM job WHERE id = ?", [job_id]))[0]
     _convert_job_args_from_json(job)
     return job
 
@@ -183,8 +191,9 @@ def get_job(job_id):
 def get_jobs():
     """Retrieve all jobs from job table."""
 
-    conn = get_connection()
-    jobs = list(conn.execute("SELECT * FROM job ORDER BY id"))
+    with closing(get_connection()) as conn:
+        with conn:
+            jobs = list(conn.execute("SELECT * FROM job ORDER BY id"))
     for job in jobs:
         _convert_job_args_from_json(job)
     return jobs
@@ -194,8 +203,11 @@ def get_jobs():
 def get_jobs_of_type(type_):
     """Retrieve all jobs of given type from job table."""
 
-    conn = get_connection()
-    jobs = list(conn.execute("SELECT * FROM job WHERE type = ? ORDER BY id", [type_]))
+    with closing(get_connection()) as conn:
+        with conn:
+            jobs = list(
+                conn.execute("SELECT * FROM job WHERE type = ? ORDER BY id", [type_])
+            )
     for job in jobs:
         _convert_job_args_from_json(job)
     return jobs
@@ -205,8 +217,10 @@ def get_jobs_of_type(type_):
 def get_suppressions():
     """Retrieve all suppressions from job table."""
 
-    conn = get_connection()
-    return list(conn.execute("SELECT * FROM suppression ORDER BY id"))
+    with closing(get_connection()) as conn:
+        with conn:
+            suppressions = list(conn.execute("SELECT * FROM suppression ORDER BY id"))
+        return suppressions
 
 
 def _now():

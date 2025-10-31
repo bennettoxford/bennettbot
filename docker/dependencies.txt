@@ -1,5 +1,3 @@
 # list ubuntu packages needed in production, one per line
 openssh-client
-python3.12
-python3.12-venv
 sqlite3
