@@ -26,6 +26,13 @@ services:
         # env vars supplied by just
         - BUILD_DATE
         - GITREF
+        # env vars from .env
+        - UBUNTU_VERSION
+        - UV_VERSION
+    # this compose file is only used for production-like testing - so we
+    # don't worry about potentially leaking dummy env vars into actual prod
+    env_file:
+      - ../.env
     # use dockers builitin PID daemon
     init: true
 
@@ -43,6 +50,9 @@ services:
         - USERID=${DEV_USERID:-1000}
         - GROUPID=${DEV_GROUPID:-1000}
     # paths relative to docker-compose.yaml file
+    env_file:
+      - ../.env
+      - .dev_env
     volumes:
       - ..:/app
 

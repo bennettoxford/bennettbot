@@ -12,38 +12,11 @@ logs
 *workflows_cache.json
 # startup check file, used as a dokku healthcheck
 .bot_startup_check
-
-# System files
-*.py[co]
-*.egg*
-build
+# db files
 *.db
-*.log
-.project
-.pydevproject
-.settings
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-.elc
-auto-save-list
-tramp
-.\#*
-*.swp
-*.swo
-.DS_Store
-._*
-Thumbs.db
-Desktop.ini
-Icon?
-.coverage
-/.coverage*
-htmlcov
-.idea/
-.cache/
-/.pytest-cache/
-/__pycache__
-venv/
+
+.coverage*
+.pytest-cache/
 .venv/
-tmp
+__pycache__
+htmlcov
