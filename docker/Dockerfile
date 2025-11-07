@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# check=error=true
 #################################################
 #
 # Images are structured as shown in this diagram:
@@ -25,11 +26,17 @@
 # Create base image with python installed.
 # All Dockerfiles should start from the base-docker image
 #
+# These build args have defaults, but are usually set from docker/.env. They
+# are used in FROM lines, so need to be declared globally and have defaults
+# set.
+ARG UBUNTU_VERSION=24.04
+ARG UV_VERSION=0.9
+
 # DL3007 ignored because base-docker we specifically always want to build on
 # the latest base image, by design.
 #
 # hadolint ignore=DL3007
-FROM ghcr.io/opensafely-core/base-docker:22.04 as base-python
+FROM ghcr.io/opensafely-core/base-docker:${UBUNTU_VERSION} AS base-python
 
 # we are going to use an apt cache on the host, so disable the default debian
 # docker clean up that deletes that cache on every apt install
@@ -38,14 +45,20 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean
 # use deadsnakes ppa to install a fully working base python installation
 # see: https://gist.github.com/tiran/2dec9e03c6f901814f6d1e8dad09528e
 # use space efficient utility from base image
-RUN --mount=type=cache,target=/var/cache/apt \
-    echo "deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy main" > /etc/apt/sources.list.d/deadsnakes-ppa.list && \
-    /usr/lib/apt/apt-helper download-file 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xf23c5a6cf475977595c89f51ba6932366a755776' /etc/apt/trusted.gpg.d/deadsnakes.asc
+RUN --mount=type=cache,target=/var/cache/apt <<'EOF'
+UBUNTU_CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+KEY_PATH=/usr/share/keyrings/deadsnakes.asc
+KEY_URL='https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xf23c5a6cf475977595c89f51ba6932366a755776'
+/usr/lib/apt/apt-helper download-file "$KEY_URL" "$KEY_PATH"
+echo "deb [signed-by=$KEY_PATH] https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/deadsnakes-ppa.list
+EOF
 
 # install any additional system dependencies
+# NOTE: ensure .python-version is not excluded in .dockerignore
 RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=bind,source=.,target=/app \
-    /root/docker-apt-install.sh /app/docker/dependencies.txt "python$(cat /app/.python-version)"
+    --mount=type=bind,source=docker/dependencies.txt,target=/dependencies.txt \
+    --mount=type=bind,source=.python-version,target=/.python-version \
+    /root/docker-apt-install.sh /dependencies.txt "python$(cat /.python-version)"
 
 # uv env var documentation: https://docs.astral.sh/uv/reference/environment/
 # copy files rather than symlink since the cache and the target are on different filesystems
@@ -58,6 +71,17 @@ ENV UV_PYTHON_DOWNLOADS=never
 # set the directory for the venv
 ENV UV_PROJECT_ENVIRONMENT="/opt/venv"
 
+##################################################
+#
+# Reusable uv CLI layer
+#
+# This allows us to specify the version in one place, and also works around
+# a limitation that you cannot use build args directly in `COPY --from`.
+#
+# See: https://github.com/moby/buildkit/issues/2412 for more infor
+#
+#
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv-cli
 
 ##################################################
 #
@@ -69,24 +93,25 @@ ENV UV_PROJECT_ENVIRONMENT="/opt/venv"
 #
 # We use a separate, disposable build image to avoid carrying the build
 # dependencies into the production image.
-FROM base-python as builder
+FROM base-python AS builder
 
 # Install any system build dependencies
-COPY docker/build-dependencies.txt /tmp/build-dependencies.txt
 RUN --mount=type=cache,target=/var/cache/apt \
-    /root/docker-apt-install.sh /tmp/build-dependencies.txt
+    --mount=type=bind,source=docker/dependencies-build.txt,target=/dependencies-build.txt \
+    /root/docker-apt-install.sh /dependencies-build.txt
 
-# Install everything in venv for isolation from system python libraries
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /usr/local/bin/
+# Pull in the binaries from our pinned uv-cli stage
+COPY --from=uv-cli /uv /uvx /usr/local/bin/
 
 RUN uv venv
 
 # The cache mount means a) /root/.cache is not in the image, and b) it's preserved
 # between docker builds locally, for faster dev rebuild.
-# Setting --directory /app lets `uv` detect the pyproject.toml, uv.lock etc.
+# Setting --directory /root lets `uv` detect the pyproject.toml, uv.lock etc.
 RUN --mount=type=cache,target=/root/.cache \
-    --mount=type=bind,source=.,target=/app \
-    uv sync --frozen --no-dev --no-install-project --directory /app
+    --mount=type=bind,source=pyproject.toml,target=/root/pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=/root/uv.lock \
+    uv sync --frozen --no-dev --no-install-project --directory /root
 
 ##################################################
 #
@@ -103,7 +128,7 @@ RUN --mount=type=cache,target=/root/.cache \
 # 2) Ensures we *have* to mount the volume for dev image, as there's no embedded
 #    version of the code. Otherwise, we could end up accidentally using the
 #    version of the code included when the prod image was built.
-FROM base-python as bennettbot-base
+FROM base-python AS bennettbot-base
 
 RUN mkdir -p /app
 WORKDIR /app
@@ -120,7 +145,7 @@ COPY --from=builder /opt/venv /opt/venv
 # Production image
 #
 # Copy code in, add proper metadata
-FROM bennettbot-base as bennettbot-prod
+FROM bennettbot-base AS bennettbot-prod
 
 EXPOSE 9999
 
@@ -164,15 +189,18 @@ USER ${USERID}:${GROUPID}
 # Now we build a dev image from our bennettbot-base image. This is basically
 # installing dev dependencies and changing the entrypoint
 #
-FROM bennettbot-base as bennettbot-dev
+FROM bennettbot-base AS bennettbot-dev
+
+# Pull in the binaries from our pinned uv-cli stage
+COPY --from=uv-cli /uv /uvx /bin/
 
 # install development requirements
 # we want to additionally sync dev dependencies into the venv;
 # prod dependencies are already installed and we don't want to remove them.
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
 RUN --mount=type=cache,target=/root/.cache \
-    --mount=type=bind,source=.,target=/app \
-    uv sync --frozen --no-install-project --directory /app
+    --mount=type=bind,source=pyproject.toml,target=/root/pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=/root/uv.lock \
+    uv sync --frozen --no-install-project --directory /root
 
 # Override ENTRYPOINT rather than CMD so we can pass arbitrary commands to the entrypoint script
 ENTRYPOINT ["/app/docker/entrypoints/dev.sh"]
@@ -180,5 +208,6 @@ ENTRYPOINT ["/app/docker/entrypoints/dev.sh"]
 # Run as non root user. Required when building image.
 ARG USERID
 ARG GROUPID
-RUN useradd -l -u ${USERID} bennettbot
+# allow non-unique user IDs for dev
+RUN useradd -l --non-unique -u  ${USERID} bennettbot
 USER ${USERID}:${GROUPID}

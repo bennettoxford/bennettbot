@@ -4,10 +4,6 @@
 LOGS_DIR=changeme
 WRITEABLE_DIR=changeme
 GCP_CREDENTIALS_PATH=changeme/gcp-credentials.json
-# Use these settings for running in docker
-# LOGS_DIR="/app/logs"
-# WRITEABLE_DIR="/app/writeable_dir"
-# GCP_CREDENTIALS_PATH="/app/writeable_dir/gcp-credentials.json"
 SLACK_LOGS_CHANNEL=changeme
 SLACK_BENNETT_ADMINS_CHANNEL=changeme
 SLACK_TECH_SUPPORT_CHANNEL=changeme

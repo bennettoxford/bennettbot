@@ -157,14 +157,6 @@ just run dispatcher
 
 ## Run in docker
 
-### Update environment
-
-Update the following environment variables in your .env file
-(defaults for docker are included in `dotenv-sample`)
-GCP_CREDENTIALS_PATH="/app/writeable_dir/gcp-credentials.json"
-LOGS_DIR="/app/logs"
-WRITEABLE_DIR="/app/writeable_dir"
-
 ### Build docker image
 
 This builds the dev image by default:
