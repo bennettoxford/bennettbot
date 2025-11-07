@@ -61,6 +61,8 @@ rm-all: stop-all
     docker compose rm dev_dispatcher
     docker compose rm dev_webserver
 
+lint:
+    docker run --rm -i ghcr.io/hadolint/hadolint:v2.14.0-alpine < Dockerfile
 
 # exec command in existing dev container
 exec *args="bash":
