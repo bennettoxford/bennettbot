@@ -28,21 +28,44 @@ WORKFLOWS = {
 
 CACHE = {
     "opensafely-core/airlock": {
+        "version": "1",
         "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
-        "conclusions": {str(key): "success" for key in WORKFLOWS_MAIN.keys()},
+        # from fixture data in runs.json
+        "conclusions": {
+            "82728346": [
+                "success",
+                "https://github.com/opensafely-core/airlock/actions/runs/10831112419",
+            ],
+            "88048829": [
+                "success",
+                "https://github.com/opensafely-core/airlock/actions/runs/10831112372",
+            ],
+            "94331150": [
+                "success",
+                "https://github.com/opensafely-core/airlock/actions/runs/10831195069",
+            ],
+            "108457763": [
+                "success",
+                "https://github.com/opensafely-core/airlock/actions/runs/10876622800",
+            ],
+            "113602598": [
+                "success",
+                "https://github.com/opensafely-core/airlock/actions/runs/10876792689",
+            ],
+        },
     }
 }
 RESULT_PATCH_SETTINGS = {
     "org": "opensafely-core",
     "repo": "airlock",
     "team": "Team RAP",
-    "conclusions": ["success"] * 5,
+    "conclusions": [["success", "http://example.com"]] * 5,
 }
 RESULT_BLOCK = {
     "type": "section",
     "text": {
         "type": "mrkdwn",
-        "text": f"<https://github.com/opensafely-core/airlock/actions?query=branch%3Amain|opensafely-core/airlock>: {':large_green_circle:' * 5}",
+        "text": f"<https://github.com/opensafely-core/airlock/actions?query=branch%3Amain|opensafely-core/airlock>: {'<http://example.com|:large_green_circle:>' * 5}",
     },
 }
 
@@ -102,6 +125,7 @@ def use_mock_results(patch_settings):
             keys = sorted(list(WORKFLOWS_MAIN.keys()))
             mock_cache = {
                 f"{r['org']}/{r['repo']}": {
+                    "version": "1",
                     "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
                     "conclusions": {
                         str(keys[i]): conc for i, conc in enumerate(r["conclusions"])
@@ -388,7 +412,7 @@ def test_get_runs_since_last_retrieval(mock_airlock_reporter, cache_path):
 def test_all_workflows_found(mock_airlock_reporter, cache_path):
     with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
         conclusions = mock_airlock_reporter.get_latest_conclusions()
-    assert conclusions == {key: "success" for key in WORKFLOWS_MAIN.keys()}
+    assert conclusions.keys() == WORKFLOWS_MAIN.keys()
     assert "created" not in Mocket.last_request().querystring
 
 
@@ -405,8 +429,9 @@ def test_some_workflows_ignored(mock_airlock_reporter, cache_path):
 def test_some_workflows_not_found(mock_airlock_reporter, cache_path):
     mock_airlock_reporter.workflows[1234] = "Workflow that only exists in the cache"
     mock_airlock_reporter.cache = {
+        "version": mock_airlock_reporter.cache_version,
         "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
-        "conclusions": {"1234": "running"},
+        "conclusions": {"1234": ["running", "http://example.com/run/1"]},
     }
 
     mock_airlock_reporter.workflows[5678] = "Workflow that will not be found"
@@ -414,7 +439,8 @@ def test_some_workflows_not_found(mock_airlock_reporter, cache_path):
     with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
         conclusions = mock_airlock_reporter.get_latest_conclusions()
     assert len(mock_airlock_reporter.workflow_ids) == 7
-    assert conclusions == {
+    conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
+    assert conclusion_statuses == {
         **{key: "success" for key in WORKFLOWS_MAIN.keys()},
         1234: "running",
         5678: "missing",
@@ -429,14 +455,16 @@ def test_get_runs_beyond_last_retrieval_if_not_all_successful(
 ):
     mock_airlock_reporter.workflows[1234] = "Some failing workflow"
     mock_airlock_reporter.cache = {
+        "version": mock_airlock_reporter.cache_version,
         "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
-        "conclusions": {"1234": conclusion},
+        "conclusions": {"1234": [conclusion, "https://example.com/run/1"]},
     }
     mock_airlock_reporter.workflow_ids = set(mock_airlock_reporter.workflows.keys())
     with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
         conclusions = mock_airlock_reporter.get_latest_conclusions()
     assert len(mock_airlock_reporter.workflow_ids) == 6
-    assert conclusions == {
+    conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
+    assert conclusion_statuses == {
         **{key: "success" for key in WORKFLOWS_MAIN.keys()},
         1234: conclusion,
     }
@@ -464,11 +492,40 @@ def test_write_to_cache_file(mock_airlock_reporter, cache_path):
 @pytest.mark.parametrize(
     "run, conclusion",
     [
-        ({"status": "completed", "conclusion": "success"}, "success"),
-        ({"status": "in_progress", "conclusion": None}, "running"),
-        ({"status": "completed", "conclusion": "failure"}, "failure"),
-        ({"status": "completed", "conclusion": "skipped"}, "skipped"),
-        ({"status": None, "conclusion": None}, "None"),
+        (
+            {
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": "http://example.com/run/1",
+            },
+            ["success", "http://example.com/run/1"],
+        ),
+        (
+            {
+                "status": "in_progress",
+                "conclusion": None,
+                "html_url": "http://example.com/run/2",
+            },
+            ["running", "http://example.com/run/2"],
+        ),
+        (
+            {
+                "status": "completed",
+                "conclusion": "failure",
+                "html_url": "http://example.com/run/3",
+            },
+            ["failure", "http://example.com/run/3"],
+        ),
+        (
+            {
+                "status": "completed",
+                "conclusion": "skipped",
+                "html_url": "http://example.com/run/4",
+            },
+            ["skipped", "http://example.com/run/4"],
+        ),
+        ({"status": None, "conclusion": None, "html_url": None}, ["None", ""]),
+        ({"status": None, "conclusion": None}, ["None", ""]),
     ],
 )
 def test_get_conclusion_for_run(run, conclusion):
@@ -476,21 +533,24 @@ def test_get_conclusion_for_run(run, conclusion):
 
 
 @pytest.mark.parametrize(
-    "conclusion, emoji",
+    "conclusion, emoji_link",
     [
-        ("success", ":large_green_circle:"),
-        ("None", ":grey_question:"),
-        ("", ":grey_question:"),
+        (
+            ["success", "http://example.com/run/1"],
+            "<http://example.com/run/1|:large_green_circle:>",
+        ),
+        (["None", ""], ":grey_question:"),
+        (["", ""], ":grey_question:"),
     ],
 )
-def test_get_summary_block(conclusion, emoji):
+def test_get_summary_block(conclusion, emoji_link):
     conclusions = [conclusion] * 5
     block = jobs.get_summary_block("opensafely-core/airlock", conclusions)
     assert block == {
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": f"<https://github.com/opensafely-core/airlock/actions?query=branch%3Amain|opensafely-core/airlock>: {emoji * 5}",
+            "text": f"<https://github.com/opensafely-core/airlock/actions?query=branch%3Amain|opensafely-core/airlock>: {emoji_link * 5}",
         },
     }
 
@@ -499,10 +559,18 @@ def test_get_summary_block(conclusion, emoji):
 @pytest.mark.parametrize(
     "conclusion, reported, emoji",
     [
-        ("success", "Success", ":large_green_circle:"),
-        ("startup_failure", "Startup Failure", ":grey_question:"),  # Handle underscore
-        ("None", "None", ":grey_question:"),
-        ("", "", ":grey_question:"),
+        (
+            ["success", "http://example.com/run/1"],
+            "<http://example.com/run/1|Success>",
+            ":large_green_circle:",
+        ),
+        (
+            ["startup_failure", "http://example.com/run/2"],
+            "<http://example.com/run/2|Startup Failure>",
+            ":grey_question:",
+        ),  # Handle underscore
+        (["None", ""], "None", ":grey_question:"),
+        (["", ""], "", ":grey_question:"),
     ],
 )
 @patch("workspace.workflows.jobs.RepoWorkflowReporter.get_latest_conclusions")
@@ -555,7 +623,7 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji):
             "org": "opensafely-core",
             "repo": "failing-repo",
             "team": "Team REX",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -577,7 +645,7 @@ def test_main_show_org():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely-core/failing-repo/actions?query=branch%3Amain|opensafely-core/failing-repo>: {':red_circle:' * 5}",
+                "text": f"<https://github.com/opensafely-core/failing-repo/actions?query=branch%3Amain|opensafely-core/failing-repo>: {'<http://example.com/run/1|:red_circle:>' * 5}",
             },
         },
         RESULT_BLOCK,
@@ -591,7 +659,7 @@ def test_main_show_org():
             "org": "opensafely",
             "repo": "failing-repo",
             "team": "Team RAP",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -611,7 +679,7 @@ def test_main_show_list_of_orgs():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {':red_circle:' * 5}",
+                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {'<http://example.com/run/1|:red_circle:>' * 5}",
             },
         },
         {
@@ -632,7 +700,7 @@ def test_main_show_list_of_orgs():
             "org": "opensafely",
             "repo": "failing-repo",
             "team": "Team RAP",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -654,7 +722,7 @@ def test_main_show_list_of_repos():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {':red_circle:' * 5}",
+                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {'<http://example.com/run/1|:red_circle:>' * 5}",
             },
         },
         RESULT_BLOCK,
@@ -668,7 +736,7 @@ def test_main_show_list_of_repos():
             "org": "opensafely",
             "repo": "documentation",
             "team": "Team REX",
-            "conclusions": ["success"] * 5,
+            "conclusions": [["success", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -688,7 +756,7 @@ def test_main_show_all():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely/documentation/actions?query=branch%3Amain|opensafely/documentation>: {':large_green_circle:' * 5}",
+                "text": f"<https://github.com/opensafely/documentation/actions?query=branch%3Amain|opensafely/documentation>: {'<http://example.com/run/1|:large_green_circle:>' * 5}",
             },
         },
         {
@@ -715,7 +783,7 @@ def test_main_show_all():
             "org": "opensafely",
             "repo": "failing-repo",
             "team": "Team REX",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -743,7 +811,7 @@ def test_main_show_all_skip_failures():
             "org": "opensafely",
             "repo": "documentation",
             "team": "Team REX",
-            "conclusions": ["success"] * 5,
+            "conclusions": [["success", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -770,7 +838,7 @@ def test_main_show_failed_empty():
             "org": "opensafely",
             "repo": "failing-repo",
             "team": "Team REX",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
     ]
 )
@@ -792,7 +860,7 @@ def test_main_show_failed_found():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {':red_circle:' * 5}",
+                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {'<http://example.com/run/1|:red_circle:>' * 5}",
             },
         },
     ]
@@ -813,14 +881,26 @@ def test_main_show_failed_found():
             "repo": "airlock",
             "team": "Team RAP",
             # Known failure fails as expected
-            "conclusions": ["success", "success", "success", "failure", "success"],
+            "conclusions": [
+                ["success", "http://example.com/run/success"],
+                ["success", "http://example.com/run/success"],
+                ["success", "http://example.com/run/success"],
+                ["failure", "http://example.com/run/fail"],
+                ["success", "http://example.com/run/success"],
+            ],
         },
         {
             "org": "opensafely",
             "repo": "failing-repo",
             "team": "Team REX",
             # Known failure unexpectedly passes
-            "conclusions": ["failure", "failure", "failure", "success", "failure"],
+            "conclusions": [
+                ["failure", "http://example.com/run/fail"],
+                ["failure", "http://example.com/run/fail"],
+                ["failure", "http://example.com/run/fail"],
+                ["success", "http://example.com/run/success"],
+                ["failure", "http://example.com/run/fail"],
+            ],
         },
     ]
 )
@@ -842,7 +922,11 @@ def test_main_show_failed_skipped():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: {':large_green_circle:'}{':red_circle:' * 4}",
+                "text": (
+                    "<https://github.com/opensafely/failing-repo/actions?query=branch%3Amain|opensafely/failing-repo>: "
+                    "<http://example.com/run/success|:large_green_circle:>"
+                    f"{'<http://example.com/run/fail|:red_circle:>' * 4}"
+                ),
             },
         },
     ]
@@ -892,25 +976,25 @@ def test_main_show_invalid_target():
             "org": "opensafely",
             "repo": "documentation",
             "team": "Tech shared",
-            "conclusions": ["success"] * 5,
+            "conclusions": [["success", "https://example.com/run/success"]] * 5,
         },
         {
             "org": "ebmdatalab",
             "repo": "team-manual",
             "team": "Tech shared",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "https://example.com/run/fail"]] * 5,
         },
         {
             "org": "ebmdatalab",
             "repo": "bennett.ox.ac.uk",
             "team": "Tech shared",
-            "conclusions": ["success"] * 5,
+            "conclusions": [["success", "https://example.com/run/success"]] * 5,
         },
         {
             "org": "ebmdatalab",
             "repo": "opensafely.org",
             "team": "Tech shared",
-            "conclusions": ["failure"] * 5,
+            "conclusions": [["failure", "https://example.com/run/fail"]] * 5,
         },
     ]
 )
@@ -929,28 +1013,28 @@ def test_show_group():
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "<https://github.com/opensafely/documentation/actions?query=branch%3Amain|opensafely/documentation>: :large_green_circle:",
+                "text": "<https://github.com/opensafely/documentation/actions?query=branch%3Amain|opensafely/documentation>: <https://example.com/run/success|:large_green_circle:>",
             },
         },
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "<https://github.com/ebmdatalab/bennett.ox.ac.uk/actions?query=branch%3Amain|ebmdatalab/bennett.ox.ac.uk>: :large_green_circle:",
+                "text": "<https://github.com/ebmdatalab/bennett.ox.ac.uk/actions?query=branch%3Amain|ebmdatalab/bennett.ox.ac.uk>: <https://example.com/run/success|:large_green_circle:>",
             },
         },
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "<https://github.com/ebmdatalab/opensafely.org/actions?query=branch%3Amain|ebmdatalab/opensafely.org>: :red_circle:",
+                "text": "<https://github.com/ebmdatalab/opensafely.org/actions?query=branch%3Amain|ebmdatalab/opensafely.org>: <https://example.com/run/fail|:red_circle:>",
             },
         },
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "<https://github.com/ebmdatalab/team-manual/actions?query=branch%3Amain|ebmdatalab/team-manual>: :red_circle:",
+                "text": "<https://github.com/ebmdatalab/team-manual/actions?query=branch%3Amain|ebmdatalab/team-manual>: <https://example.com/run/fail|:red_circle:>",
             },
         },
     ]
