@@ -392,6 +392,47 @@ def test_repo_not_cached(mock_airlock_reporter, cache_path):
         assert mock_airlock_reporter._load_cache_for_repo() == {}
 
 
+def test_cache_no_version(mock_airlock_reporter, cache_path):
+    mock_cache = {
+        "opensafely-core/airlock": {
+            "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
+            "conclusions": {
+                "1": {"82728346": ["success", "https://example.com/run/1"]}
+            },
+        }
+    }
+    with open(cache_path, "w") as f:
+        json.dump(mock_cache, f)
+
+    with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
+        cache = mock_airlock_reporter._load_cache_for_repo()
+    assert cache == {}
+
+
+def test_cache_version(mock_airlock_reporter, cache_path):
+    mock_cache = {
+        "opensafely-core/airlock": {
+            "version": mock_airlock_reporter.cache_version,
+            "timestamp": f"{THIS_YEAR}-01-15T09:00:08Z",
+            "conclusions": {
+                "1": {"82728346": ["success", "https://example.com/run/1"]}
+            },
+        }
+    }
+    with open(cache_path, "w") as f:
+        json.dump(mock_cache, f)
+
+    with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
+        cache = mock_airlock_reporter._load_cache_for_repo()
+    assert cache == mock_cache["opensafely-core/airlock"]
+    assert mock_airlock_reporter.cache_version == cache["version"]
+
+    mock_airlock_reporter.cache_version = "foo"
+    with patch("workspace.workflows.jobs.CACHE_PATH", cache_path):
+        new_cache = mock_airlock_reporter._load_cache_for_repo()
+    assert new_cache == {}
+
+
 def test_get_runs_since_last_retrieval(mock_airlock_reporter, cache_path):
     # Create the cache and test that it is loaded
     with open(cache_path, "w") as f:
