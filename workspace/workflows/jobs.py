@@ -105,11 +105,15 @@ class RepoWorkflowReporter:
 
         self.workflows = self.get_workflows()  # Dict of workflow_id: workflow_name
         self.workflow_ids = set(self.workflows.keys())
-
+        # Add a version cache so we can force refresh if necessary
+        self.cache_version = "1"
         self.cache = self._load_cache_for_repo()
 
     def _load_cache_for_repo(self) -> dict:
-        return load_cache().get(self.location, {})
+        cache = load_cache().get(self.location, {})
+        if cache.get("version") != self.cache_version:
+            return {}
+        return cache
 
     @property
     def last_retrieval_timestamp(self):
@@ -139,15 +143,17 @@ class RepoWorkflowReporter:
 
     def get_latest_conclusions(self) -> dict:
         """
-        Use the GitHub API to get the conclusion of the most recent run for each workflow.
+        Use the GitHub API to get the conclusion and URL of the most recent run for each workflow.
         Update the cache file with the conclusions and the timestamp of the retrieval.
         """
         # Detect new runs and status updates for existing non-successful runs
         since_last_retrieval = (
             self.cache != {}
-            and get_success_rate(list(self.cache["conclusions"].values())) == 1
+            and get_success_rate(
+                [conclusion for conclusion, _ in self.cache["conclusions"].values()]
+            )
+            == 1
         )
-
         # Use the moment just before calling the GitHub API as the timestamp
         timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         new_runs = self.get_runs(since_last_retrieval)
@@ -158,6 +164,7 @@ class RepoWorkflowReporter:
         self.fill_in_conclusions_for_missing_ids(conclusions, missing_ids)
 
         self.cache = {
+            "version": self.cache_version,
             "timestamp": timestamp,
             # To be consistent with the JSON file which has the IDs as strings
             "conclusions": {str(k): v for k, v in conclusions.items()},
@@ -169,10 +176,11 @@ class RepoWorkflowReporter:
     @staticmethod
     def get_conclusion_for_run(run) -> str:
         aliases = {"in_progress": "running"}
+        run_url = run.get("html_url") or ""
         if run["conclusion"] is None:
             status = str(run["status"])
-            return aliases.get(status, status)
-        return run["conclusion"]
+            return [aliases.get(status, status), run_url]
+        return [run["conclusion"], run_url]
 
     def fill_in_conclusions_for_missing_ids(self, conclusions, missing_ids):
         """
@@ -182,7 +190,10 @@ class RepoWorkflowReporter:
         previous_conclusions = self.cache.get("conclusions", {})
         for workflow_id in missing_ids:
             id_str = str(workflow_id)  # In the cache JSON, IDs are stored as strings
-            conclusions[workflow_id] = previous_conclusions.get(id_str, "missing")
+            missing_name_and_url = ["missing", ""]
+            conclusions[workflow_id] = previous_conclusions.get(
+                id_str, missing_name_and_url
+            )
         return
 
     def write_cache_to_file(self):
@@ -194,9 +205,11 @@ class RepoWorkflowReporter:
     def report(self) -> str:
         # This needs to be a class method as it uses self.workflows for names
         def format_text(workflow_id, conclusion) -> str:
+            conclusion_name, run_url = conclusion
             name = self.workflows[workflow_id]
-            emoji = get_emoji(conclusion)
-            return f"{name}: {emoji} {conclusion.title().replace('_', ' ')}"
+            emoji = get_emoji(conclusion_name)
+            link = _format_run_url(run_url, conclusion_name.title().replace("_", " "))
+            return f"{name}: {emoji} {link}"
 
         conclusions = self.get_latest_conclusions()
         lines = [format_text(wf, conclusion) for wf, conclusion in conclusions.items()]
@@ -222,9 +235,20 @@ class RepoWorkflowReporter:
         return latest_runs, missing_ids
 
 
+def _format_run_url(run_url, link_text):
+    if run_url:
+        return f"<{run_url}|{link_text}>"
+    return link_text
+
+
 def get_summary_block(location: str, conclusions: list) -> str:
     link = get_github_actions_link(location)
-    emojis = "".join([get_emoji(c) for c in conclusions])
+    emojis = "".join(
+        [
+            _format_run_url(run_url, get_emoji(conclusion_name))
+            for conclusion_name, run_url in conclusions
+        ]
+    )
     return get_text_block(f"<{link}|{location}>: {emojis}")
 
 
@@ -242,19 +266,24 @@ def _summarise(header_text: str, locations: list[str], skip_successful: bool) ->
         wf_conclusions = {
             k: v
             for k, v in wf_conclusions.items()
-            if v == "success" or (k not in known_failure_ids and v != "missing")
+            if v[0] == "success" or (k not in known_failure_ids and v[0] != "missing")
         }
 
         if len(wf_conclusions) == 0:
             continue
 
-        if skip_successful and get_success_rate(list(wf_conclusions.values())) == 1:
+        if (
+            skip_successful
+            and get_success_rate(
+                [wf_conclusion[0] for wf_conclusion in wf_conclusions.values()]
+            )
+            == 1
+        ):
             continue
         unsorted[location] = list(wf_conclusions.values())
 
-    key = lambda item: get_success_rate(item[1])
+    key = lambda item: get_success_rate(item[1][0])
     conclusions = sorted(unsorted.items(), key=key)
-
     blocks = [
         get_header_block(header_text),
         *[get_summary_block(loc, conc) for loc, conc in conclusions],
