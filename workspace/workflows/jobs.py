@@ -105,11 +105,15 @@ class RepoWorkflowReporter:
 
         self.workflows = self.get_workflows()  # Dict of workflow_id: workflow_name
         self.workflow_ids = set(self.workflows.keys())
-
+        # Add a version cache so we can force refresh if necessary
+        self.cache_version = "1"
         self.cache = self._load_cache_for_repo()
 
     def _load_cache_for_repo(self) -> dict:
-        return load_cache().get(self.location, {})
+        cache = load_cache().get(self.location, {})
+        if cache.get("version") != self.cache_version:
+            return {}
+        return cache
 
     @property
     def last_retrieval_timestamp(self):
@@ -160,6 +164,7 @@ class RepoWorkflowReporter:
         self.fill_in_conclusions_for_missing_ids(conclusions, missing_ids)
 
         self.cache = {
+            "version": self.cache_version,
             "timestamp": timestamp,
             # To be consistent with the JSON file which has the IDs as strings
             "conclusions": {str(k): v for k, v in conclusions.items()},
