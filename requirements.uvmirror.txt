@@ -20,7 +20,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   pytest
-coverage==7.12.0
+coverage==7.13.0
     # via pytest-cov
 cryptography==46.0.3
     # via paramiko-ng
@@ -76,7 +76,7 @@ markupsafe==3.0.3
     #   flask
     #   jinja2
     #   werkzeug
-marshmallow==4.1.0
+marshmallow==4.1.1
     # via environs
 mocket==3.14.0
 nodeenv==1.9.1
@@ -87,7 +87,7 @@ packaging==25.0
     #   pytest
 paramiko-ng==2.9.0
     # via fab-classic
-platformdirs==4.5.0
+platformdirs==4.5.1
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -96,7 +96,7 @@ pluggy==1.6.0
 pre-commit==4.5.0
 proto-plus==1.26.1
     # via google-api-core
-protobuf==6.33.1
+protobuf==6.33.2
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -115,7 +115,7 @@ pygments==2.19.2
     # via pytest
 pyparsing==3.2.5
     # via httplib2
-pytest==9.0.1
+pytest==9.0.2
     # via
     #   pytest-cov
     #   pytest-env
@@ -135,7 +135,7 @@ requests==2.32.5
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.14.7
+ruff==0.14.8
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
@@ -148,7 +148,7 @@ typing-extensions==4.15.0
     # via mocket
 uritemplate==4.2.0
     # via google-api-python-client
-urllib3==2.5.0
+urllib3==2.6.1
     # via
     #   mocket
     #   requests
