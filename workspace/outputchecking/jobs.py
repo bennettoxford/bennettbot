@@ -19,7 +19,7 @@ def report_rota():
     return OutputCheckingRotaReporter(
         title="Output checking rota",
         spreadsheet_id="1i3D_HtuYUCU_dqvRug94YkfK6pG4ECyxTdOangubUlY",
-        sheet_range="Rota 2025",
+        sheet_range="Rota 2026",
     ).report()
 
 
