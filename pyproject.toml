@@ -17,6 +17,8 @@ dependencies = [
   "django-dotenv",
   # for commands that read from Google Sheets
   "google-api-python-client",
+  # pinning until httplib2 is compatible with pyparsing 3.3.0 or above
+  "pyparsing<3.3.0",
 ]
 
 [tool.coverage.run]
@@ -113,7 +115,7 @@ lines-after-imports = 2
 # See https://github.com/opensafely-core/repo-template/blob/main/DEVELOPERS.md for details
 [tool.uv]
 required-version = ">=0.9"
-exclude-newer = "2025-12-10T00:00:00Z"
+exclude-newer = "2025-12-31T00:00:00Z"
 exclude-newer-package = {}
 
 [dependency-groups]
