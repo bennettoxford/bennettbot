@@ -114,7 +114,9 @@ pycparser==2.23 ; implementation_name != 'PyPy' and platform_python_implementati
 pygments==2.19.2
     # via pytest
 pyparsing==3.2.5
-    # via httplib2
+    # via
+    #   bennettbot
+    #   httplib2
 pytest==9.0.2
     # via
     #   pytest-cov
