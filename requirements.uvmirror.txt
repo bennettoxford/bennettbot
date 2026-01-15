@@ -32,7 +32,7 @@ environs==14.5.0
     # via bennettbot
 fab-classic==1.20.2
     # via bennettbot
-filelock==3.20.2
+filelock==3.20.3
     # via virtualenv
 flask==3.1.2
     # via bennettbot
