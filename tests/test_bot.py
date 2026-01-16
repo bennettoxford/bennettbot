@@ -909,14 +909,17 @@ def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     # Initially the response has status 200 and body "" (the default in the dispatch method).
     # This is the response that the dispatch method returns as it applies middleware
     # Previously this function just waited for 0.1 seconds to allow the resp to settle,
-    # but occasionally in CI that appears to not be long enough. We now give it 5 attempts
-    # to resolve
+    # but occasionally in CI that appears to not be long enough. We now give it 6 attempts
+    # with an exponential backoff to resolve (waiting for up to 3.15s in total; if it takes longer
+    # than that, something is clearly wrong).
     # Note: we check for a resp.body because all tests that use this method return _something_ in
     # their body, whether they're expected to be successful or not.
     attempts = 0
-    while resp.body == "" and attempts < 5:
+    delay = 0.05
+    while resp.body == "" and attempts < 6:
         attempts += 1
-        time.sleep(0.1)
+        time.sleep(delay)
+        delay *= 2
 
     assert resp.status == expected_status
     return resp
