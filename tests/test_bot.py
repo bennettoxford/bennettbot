@@ -903,7 +903,21 @@ def handle_message(
 def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     request = get_mock_request(event_type, event_kwargs)
     resp = mock_app.dispatch(request)
-    time.sleep(0.1)
+    # App.dispatch() applies all middleware and dispatches the request to the correct
+    # code path.
+    # https://github.com/slackapi/bolt-python/blob/v1.6.1/slack_bolt/app/app.py#L433
+    # Initially the response has status 200 and body "" (the default in the dispatch method).
+    # This is the response that the dispatch method returns as it applies middleware
+    # Previously this function just waited for 0.1 seconds to allow the resp to settle,
+    # but occasionally in CI that appears to not be long enough. We now give it 5 attempts
+    # to resolve
+    # Note: we check for a resp.body because all tests that use this method return _something_ in
+    # their body, whether they're expected to be successful or not.
+    attempts = 0
+    while resp.body == "" and attempts < 5:
+        attempts += 1
+        time.sleep(0.1)
+
     assert resp.status == expected_status
     return resp
 
