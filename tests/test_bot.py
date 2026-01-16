@@ -916,7 +916,7 @@ def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     # their body, whether they're expected to be successful or not.
     attempts = 0
     delay = 0.05
-    while attempts < 6:
+    while resp.body == "" and attempts < 6:
         attempts += 1
         time.sleep(delay)
         delay *= 2
