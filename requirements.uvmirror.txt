@@ -101,7 +101,7 @@ protobuf==6.33.4
     #   proto-plus
 puremagic==1.30
     # via mocket
-pyasn1==0.6.1
+pyasn1==0.6.2
     # via
     #   pyasn1-modules
     #   rsa
@@ -135,7 +135,7 @@ requests==2.32.5
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.14.11
+ruff==0.14.13
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
