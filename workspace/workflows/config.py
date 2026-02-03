@@ -1,9 +1,4 @@
-TEAMS = [
-    "Tech shared",
-    "Team REX",
-    "Team RAP",
-    "Team PIN",
-]
+TEAMS = ["Tech shared", "Team REX", "Team RAP", "Team Prescribosaurus"]
 
 REPOS = {
     "actions-registry": {
@@ -36,7 +31,7 @@ REPOS = {
     },
     "ethelred": {
         "org": "opensafely-core",
-        "team": "Team PIN",
+        "team": "Tech shared",
     },
     "job-runner": {
         "org": "opensafely-core",
@@ -56,7 +51,7 @@ REPOS = {
     },
     "openprescribing": {
         "org": "bennettoxford",
-        "team": "Team RAP",
+        "team": "Team Prescribosaurus",
     },
     "opensafely-cli": {
         "org": "opensafely-core",
@@ -70,11 +65,23 @@ REPOS = {
         "org": "opensafely-core",
         "team": "Team REX",
     },
+    "opensafely-vscode": {
+        "org": "opensafely-core",
+        "team": "Team RAP",
+    },
+    "osgithub": {
+        "org": "opensafely-core",
+        "team": "Team REX",
+    },
     "pipeline": {
         "org": "opensafely-core",
         "team": "Team RAP",
     },
     "python-docker": {
+        "org": "opensafely-core",
+        "team": "Team RAP",
+    },
+    "r-docker": {
         "org": "opensafely-core",
         "team": "Team RAP",
     },
@@ -86,7 +93,19 @@ REPOS = {
         "org": "opensafely-core",
         "team": "Tech shared",
     },
+    "research-action": {
+        "org": "opensafely-core",
+        "team": "Team REX",
+    },
+    "research-template-docker": {
+        "org": "opensafely-core",
+        "team": "Team REX",
+    },
     "sqlrunner": {
+        "org": "opensafely-core",
+        "team": "Team RAP",
+    },
+    "stata-docker": {
         "org": "opensafely-core",
         "team": "Team RAP",
     },
@@ -96,6 +115,10 @@ REPOS = {
     },
     "tpp-database-utils": {
         "org": "opensafely-core",
+        "team": "Team RAP",
+    },
+    "update-dependencies-action": {
+        "org": "bennettoxford",
         "team": "Team RAP",
     },
 }
