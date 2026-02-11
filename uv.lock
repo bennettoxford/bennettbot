@@ -6,9 +6,6 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
-[options]
-exclude-newer = "2026-02-04T00:00:00Z"
-
 [[package]]
 name = "bcrypt"
 version = "5.0.0"
