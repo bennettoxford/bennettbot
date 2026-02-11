@@ -18,9 +18,9 @@ colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   pytest
-coverage==7.13.2
+coverage==7.13.3
     # via pytest-cov
-cryptography==46.0.3
+cryptography==46.0.4
     # via
     #   google-auth
     #   paramiko-ng
@@ -42,7 +42,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.29.0
     # via google-api-python-client
-google-api-python-client==2.188.0
+google-api-python-client==2.189.0
     # via bennettbot
 google-auth==2.48.0
     # via
@@ -53,7 +53,7 @@ google-auth-httplib2==0.3.0
     # via google-api-python-client
 googleapis-common-protos==1.72.0
     # via google-api-core
-gunicorn==24.1.1
+gunicorn==25.0.1
     # via bennettbot
 h11==0.16.0
     # via mocket
@@ -94,9 +94,9 @@ pluggy==1.6.0
     #   pytest
     #   pytest-cov
 pre-commit==4.5.1
-proto-plus==1.27.0
+proto-plus==1.27.1
     # via google-api-core
-protobuf==6.33.4
+protobuf==6.33.5
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -137,7 +137,7 @@ requests==2.32.5
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.14.14
+ruff==0.15.0
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
