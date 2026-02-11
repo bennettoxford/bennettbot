@@ -122,8 +122,8 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
         # Don't match app mentions that include tech support keywords; these will be
         # matched by the tech-support listener
         matchers=[
-            lambda event: not support_config["tech-support"]["regex"].match(
-                event["text"]
+            lambda event: (
+                not support_config["tech-support"]["regex"].match(event["text"])
             )
         ],
     )
@@ -143,8 +143,10 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
         ".*",
         # only match DMs with the bot that are non-tech support messages
         matchers=[
-            lambda message: message["channel_type"] == "im"
-            and not support_config["tech-support"]["regex"].match(message["text"])
+            lambda message: (
+                message["channel_type"] == "im"
+                and not support_config["tech-support"]["regex"].match(message["text"])
+            )
         ],
     )
     def im_job_listener(event, say, ack):
