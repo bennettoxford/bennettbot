@@ -20,7 +20,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   pytest
 coverage==7.13.3
     # via pytest-cov
-cryptography==46.0.4
+cryptography==46.0.5
     # via
     #   google-auth
     #   paramiko-ng
