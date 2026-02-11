@@ -11,6 +11,14 @@ updates:
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
-      interval: "daily"
-    # Security updates only
-    open-pull-requests-limit: 0
+      interval: "weekly"
+      day: "wednesday"
+      time: "04:00"
+      timezone: "Europe/London"
+    cooldown:
+      default-days: 7
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
