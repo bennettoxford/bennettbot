@@ -61,6 +61,11 @@ upgrade-package package: devenv
 upgrade-all: devenv
     uv lock --upgrade
 
+# update the companion requirements formatted file
+uvmirror file="requirements.uvmirror":
+    rm -f {{ file }}
+    uv export --format requirements-txt --frozen --no-hashes --all-groups --all-extras > {{ file }}
+
 # *ARGS is variadic, 0 or more. This allows us to do `just test -k match`, for example.
 
 # Run the tests
