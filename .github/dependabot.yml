@@ -15,6 +15,8 @@ updates:
       day: "wednesday"
       time: "04:00"
       timezone: "Europe/London"
+    allow:
+      - dependency-type: "all"  # include transitive dependencies
     cooldown:
       default-days: 7
     groups:
