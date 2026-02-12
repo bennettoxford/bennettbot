@@ -17,7 +17,6 @@ dependencies = [
   "django-dotenv",
   # for commands that read from Google Sheets
   "google-api-python-client",
-  # pinning until httplib2 is compatible with pyparsing 3.3.0 or above
   "pyparsing<3.4.0",
 ]
 
