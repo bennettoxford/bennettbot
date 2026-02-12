@@ -53,6 +53,7 @@ def report_rota() -> str:
         ("opensafely-core", "actions-registry"),
         ("opensafely-core", "research-template-docker"),
         ("opensafely-core", "repo-template"),
+        ("opensafely", "documentation"),
     ]
     repo_links = [
         f"<https://github.com/{org}/{repo}/pulls|{repo}>" for org, repo in repos
