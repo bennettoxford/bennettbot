@@ -113,7 +113,7 @@ pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementatio
     # via cffi
 pygments==2.19.2
     # via pytest
-pyparsing==3.2.5
+pyparsing==3.3.2
     # via
     #   bennettbot
     #   httplib2
