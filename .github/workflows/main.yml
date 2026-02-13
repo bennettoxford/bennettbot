@@ -89,6 +89,8 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login "$REGISTRY" -u ${{ github.actor }} --password-stdin
             docker tag "$IMAGE_NAME" "$PUBLIC_IMAGE_NAME:latest"
             docker push "$PUBLIC_IMAGE_NAME:latest"
+            # dumb the full local container metadata into the logs in case its useful
+            docker inspect "$PUBLIC_IMAGE_NAME:latest"
 
       - name: Deploy image
         run: |
