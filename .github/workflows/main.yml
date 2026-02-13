@@ -98,6 +98,7 @@ jobs:
             ssh-agent -a "$SSH_AUTH_SOCK" > /dev/null
             ssh-add - <<< "${{ secrets.DOKKU3_DEPLOY_SSH_KEY }}"
             set -x
-            SHA=$(docker inspect --format='{{json .RepoDigests}}' "$PUBLIC_IMAGE_NAME:latest" | grep -o "$PUBLIC_IMAGE_NAME@.*")
+            # grep for the fully qualified name
+            SHA=$(docker inspect --format='{{join .RepoDigests "\n"}}' "$PUBLIC_IMAGE_NAME:latest" | grep "$PUBLIC_IMAGE_NAME")
             echo "Deploying $SHA to dokku3"
             ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" dokku@dokku3.ebmdatalab.net git:from-image bennettbot "$SHA"
