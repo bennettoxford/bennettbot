@@ -10,6 +10,8 @@ updates:
 
   - package-ecosystem: "uv"
     directory: "/"
+    exclude-paths:
+      - requirements.uvmirror
     schedule:
       interval: "weekly"
       day: "wednesday"
