@@ -89,7 +89,7 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login "$REGISTRY" -u ${{ github.actor }} --password-stdin
             docker tag "$IMAGE_NAME" "$PUBLIC_IMAGE_NAME:latest"
             docker push "$PUBLIC_IMAGE_NAME:latest"
-            # dumb the full local container metadata into the logs in case its useful
+            # dump the full local container metadata into the logs in case its useful
             docker inspect "$PUBLIC_IMAGE_NAME:latest"
 
       - name: Deploy image
@@ -97,8 +97,13 @@ jobs:
             set -eu
             ssh-agent -a "$SSH_AUTH_SOCK" > /dev/null
             ssh-add - <<< "${{ secrets.DOKKU3_DEPLOY_SSH_KEY }}"
-            set -x
             # grep for the fully qualified name
-            SHA=$(docker inspect --format='{{join .RepoDigests "\n"}}' "$PUBLIC_IMAGE_NAME:latest" | grep "$PUBLIC_IMAGE_NAME")
+            SHA=$(docker inspect --format='{{join .RepoDigests "\n"}}' "$PUBLIC_IMAGE_NAME:latest" | grep --fixed-strings "$PUBLIC_IMAGE_NAME")
+            # Fail if we don't find it, and print the output of the command before grepping
+            if [ -z "$SHA" ]; then
+              echo "$SHA is empty"
+              docker inspect --format='{{join .RepoDigests "\n"}}' "$PUBLIC_IMAGE_NAME:latest"
+              exit 1
+            fi
             echo "Deploying $SHA to dokku3"
             ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" dokku@dokku3.ebmdatalab.net git:from-image bennettbot "$SHA"
