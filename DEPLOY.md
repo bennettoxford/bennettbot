@@ -216,11 +216,11 @@ just docker/build prod
 docker tag bennettbot ghcr.io/bennettoxford/bennettbot:latest
 docker push ghcr.io/bennettoxford/bennettbot:latest
 
-# get the SHA for the latest image
-SHA=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/bennettoxford/bennettbot:latest)
+# get the digest for the latest image
+IMAGE_DIGEST=$(docker inspect --format='{{join .RepoDigests "\n"}}' ghcr.io/bennettoxford/bennettbot:latest | grep -F 'ghcr.io/')
 ```
 
 On dokku3:
 ```
-$ dokku git:from-image bennettbot <SHA>
+$ dokku git:from-image bennettbot <IMAGE_DIGEST>
 ```
