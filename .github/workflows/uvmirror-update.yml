@@ -35,6 +35,7 @@ jobs:
         if: ${{ (github.actor == 'dependabot[bot]') && (steps.check_for_changes.outputs.changed) }}
         run: |
           echo "uvmirror file is out of date; run again manually u(sing the workflow_dispatch trigger for this branch) to update it."
+          echo "https://github.com/bennettoxford/bennettbot/actions/workflows/uvmirror-update.yml"
           exit 1
 
   update_uvmirror:
