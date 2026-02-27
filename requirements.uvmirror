@@ -123,12 +123,14 @@ pytest==9.0.2
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.0.0
-pytest-env==1.2.0
+pytest-env==1.5.0
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
 python-dotenv==1.2.1
-    # via environs
+    # via
+    #   environs
+    #   pytest-env
 pyyaml==6.0.3
     # via pre-commit
 requests==2.32.5
@@ -137,7 +139,7 @@ requests==2.32.5
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.15.0
+ruff==0.15.1
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
