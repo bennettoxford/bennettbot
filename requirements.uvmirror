@@ -78,7 +78,7 @@ markupsafe==3.0.3
     #   werkzeug
 marshmallow==4.2.1
     # via environs
-mocket==3.14.0
+mocket==3.14.1
 nodeenv==1.10.0
     # via pre-commit
 packaging==26.0
@@ -139,7 +139,7 @@ requests==2.32.5
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.15.1
+ruff==0.15.2
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
