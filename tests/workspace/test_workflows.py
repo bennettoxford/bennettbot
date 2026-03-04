@@ -1005,7 +1005,6 @@ def test_main_show_invalid_target():
             "workflows": {
                 "opensafely/documentation": [82728346],
                 "ebmdatalab/bennett.ox.ac.uk": [82728346],
-                "ebmdatalab/opensafely.org": [82728346],
                 "ebmdatalab/team-manual": [82728346],
             },
         }
@@ -1030,12 +1029,6 @@ def test_main_show_invalid_target():
             "repo": "bennett.ox.ac.uk",
             "team": "Tech shared",
             "conclusions": [["success", "https://example.com/run/success"]] * 5,
-        },
-        {
-            "org": "ebmdatalab",
-            "repo": "opensafely.org",
-            "team": "Tech shared",
-            "conclusions": [["failure", "https://example.com/run/fail"]] * 5,
         },
     ]
 )
@@ -1062,13 +1055,6 @@ def test_show_group():
             "text": {
                 "type": "mrkdwn",
                 "text": "<https://github.com/ebmdatalab/bennett.ox.ac.uk/actions?query=branch%3Amain|ebmdatalab/bennett.ox.ac.uk>: <https://example.com/run/success|:large_green_circle:>",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "<https://github.com/ebmdatalab/opensafely.org/actions?query=branch%3Amain|ebmdatalab/opensafely.org>: <https://example.com/run/fail|:red_circle:>",
             },
         },
         {
