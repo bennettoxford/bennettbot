@@ -19,6 +19,7 @@ updates:
       timezone: "Europe/London"
     allow:
       - dependency-type: "all"  # include transitive dependencies
+    versioning-strategy: "increase"
     cooldown:
       default-days: 7
     groups:
