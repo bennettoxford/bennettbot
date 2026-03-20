@@ -27,6 +27,7 @@
   // full lockfile update
   "lockFileMaintenance": {
       "enabled": true,
+      "minimumReleaseAge": "7 days",
       "schedule": [
         "* 0-3 * * WED"
       ],
