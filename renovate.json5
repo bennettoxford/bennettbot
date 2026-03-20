@@ -42,6 +42,11 @@
   // the pyproject.toml range with respect to the cooldown, but DOESN'T respect the cooldown when it updates the
   // lockfile, which results in a conflict with MinimumReleaseAge.
   "packageRules": [
+    // We handle github runners (ubuntu versions etc) manually
+    {
+      "matchDatasources": ["github-runners"],
+      "enabled": false
+    },
     {
       "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies"],
