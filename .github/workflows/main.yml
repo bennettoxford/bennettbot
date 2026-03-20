@@ -30,6 +30,8 @@ jobs:
           cache: uv
       - name: Check formatting, linting and import sorting
         run: just check
+      - name: Check renovate config
+        run: just check-renovate-config
 
   test:
     runs-on: ubuntu-24.04
