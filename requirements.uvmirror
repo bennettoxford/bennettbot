@@ -42,7 +42,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.29.0
     # via google-api-python-client
-google-api-python-client==2.191.0
+google-api-python-client==2.192.0
     # via bennettbot
 google-auth==2.48.0
     # via

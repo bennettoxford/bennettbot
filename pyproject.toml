@@ -16,7 +16,7 @@ dependencies = [
   # for op commands
   "django-dotenv<=1.4.2",
   # for commands that read from Google Sheets
-  "google-api-python-client<=2.191.0",
+  "google-api-python-client<=2.192.0",
   "pyparsing<=3.3.2",
 ]
 
