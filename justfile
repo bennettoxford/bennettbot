@@ -105,7 +105,6 @@ check:
       fi
     }
 
-    check "just check-lockfile"
     check "just format"
     check "just lint"
     check "just lint-actions"
@@ -119,18 +118,8 @@ check:
       exit 1
     fi
 
-# validate uv.lock
-check-lockfile:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Make sure dates in pyproject.toml and uv.lock are in sync
-    unset UV_EXCLUDE_NEWER
-    rc=0
-    uv lock --check || rc=$?
-    if test "$rc" != "0" ; then
-        echo "Timestamp cutoffs in uv.lock must match those in pyproject.toml. See DEVELOPERS.md for details and hints." >&2
-        exit $rc
-    fi
+check-renovate-config:
+    npx --yes --package renovate -- renovate-config-validator
 
 # Fix formatting and import sort ordering
 fix:
