@@ -117,11 +117,11 @@ required-version = ">=0.9"
 
 [dependency-groups]
 dev = [
-  "ruff<=0.15.4",
+  "ruff<=0.15.7",
   "pre-commit<=4.5.1",
   "pytest<=9.0.2",
-  "pytest-cov<=7.0.0",
-  "pytest-env<=1.5.0",
+  "pytest-cov<=7.1.0",
+  "pytest-env<=1.6.0",
   "pytest-freezer<=0.4.9",
   "mocket<=3.14.1",
 ]
