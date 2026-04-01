@@ -102,6 +102,13 @@
         "* 0-3 * * WED"
       ]
     },
+    // disable minimumReleaseAge for pinDigest to avoid the stability-days check showing as pending
+    // when Renovate opens a PR for pinning GHA dependencies to digests
+    {
+      "description": "Disable minimumReleaseAge for pinDigest update types",
+      "matchUpdateTypes": ["pinDigest"],
+      "minimumReleaseAge": null,
+    },
     // EXAMPLE: If required, pin a specific dependency to an upper allowed version
     // Otherwise renovate will use the general "widen" strategy to change the upper limit in pyproject.toml
     // and will bump it anyway
