@@ -42,7 +42,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.29.0
     # via google-api-python-client
-google-api-python-client==2.191.0
+google-api-python-client==2.193.0
     # via bennettbot
 google-auth==2.48.0
     # via
@@ -53,7 +53,7 @@ google-auth-httplib2==0.3.0
     # via google-api-python-client
 googleapis-common-protos==1.72.0
     # via google-api-core
-gunicorn==25.1.0
+gunicorn==25.2.0
     # via bennettbot
 h11==0.16.0
     # via mocket
@@ -122,12 +122,12 @@ pytest==9.0.2
     #   pytest-cov
     #   pytest-env
     #   pytest-freezer
-pytest-cov==7.0.0
-pytest-env==1.5.0
+pytest-cov==7.1.0
+pytest-env==1.6.0
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via
     #   environs
     #   pytest-env
@@ -139,7 +139,7 @@ requests==2.33.0
     #   google-api-core
 rsa==4.9.1
     # via google-auth
-ruff==0.15.4
+ruff==0.15.7
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0

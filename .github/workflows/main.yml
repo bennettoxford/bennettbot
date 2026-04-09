@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: opensafely-core/setup-action@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: opensafely-core/setup-action@c458795dc9c6f219fa1cbf6148940db57c3ac03d # v1
         with:
           install-just: true
           install-uv: true
@@ -37,8 +37,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: opensafely-core/setup-action@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: opensafely-core/setup-action@c458795dc9c6f219fa1cbf6148940db57c3ac03d # v1
         with:
           install-just: true
           install-uv: true
@@ -51,8 +51,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: opensafely-core/setup-action@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: opensafely-core/setup-action@c458795dc9c6f219fa1cbf6148940db57c3ac03d # v1
         with:
           install-just: true
       - name: Check formatting, linting and import sorting on docker
@@ -62,8 +62,8 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: opensafely-core/setup-action@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: opensafely-core/setup-action@c458795dc9c6f219fa1cbf6148940db57c3ac03d # v1
         with:
           install-just: true
       - name: Run tests in docker
@@ -83,8 +83,8 @@ jobs:
     concurrency: deploy-production
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: opensafely-core/setup-action@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: opensafely-core/setup-action@c458795dc9c6f219fa1cbf6148940db57c3ac03d # v1
         with:
           install-just: true
 
