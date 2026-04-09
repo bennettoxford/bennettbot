@@ -64,6 +64,7 @@ class SpreadsheetRotaReporter(RotaReporter):
 
     def get_rota(self):
         rows = self.get_rota_data_from_sheet()
+        rows = [[v.strip() for v in row] for row in rows]
         rota = self.convert_rota_data_to_dictionary(rows)
         return rota
 
