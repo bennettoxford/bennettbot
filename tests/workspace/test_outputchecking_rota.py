@@ -114,3 +114,32 @@ def test_rota_report_missing_future_dates(get_rota_data_from_sheet, freezer):
             },
         },
     ]
+
+
+@patch(
+    "workspace.outputchecking.jobs.OutputCheckingRotaReporter.get_rota_data_from_sheet"
+)
+def test_rota_report_ignores_surrounding_whitespace(get_rota_data_from_sheet, freezer):
+    freezer.move_to("2023-02-20")
+    get_rota_data_from_sheet.return_value = [
+        ["Week commencing", "Lead reviewer", "Reviewer 2"],
+        ["  2023-02-20", "Louis Fisher ", "Colm Andrews "],
+        ["2023-02-27  ", "Jon Massey ", " Lisa Hopcroft"],
+    ]
+    blocks = json.loads(report_rota())
+    assert blocks[1:3] == [
+        {
+            "text": {
+                "text": "Lead reviewer this week (20 Feb-24 Feb): Louis Fisher (secondary: Colm Andrews)",
+                "type": "mrkdwn",
+            },
+            "type": "section",
+        },
+        {
+            "text": {
+                "text": "Lead reviewer next week (27 Feb-03 Mar): Jon Massey (secondary: Lisa Hopcroft)",
+                "type": "mrkdwn",
+            },
+            "type": "section",
+        },
+    ]
