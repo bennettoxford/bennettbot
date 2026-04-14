@@ -119,7 +119,7 @@ pyparsing==3.3.2
     # via
     #   bennettbot
     #   httplib2
-pytest==9.0.2
+pytest==9.0.3
     # via
     #   pytest-cov
     #   pytest-env
