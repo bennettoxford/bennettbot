@@ -57,9 +57,9 @@ install-precommit:
 upgrade-package package: devenv
     uv lock --upgrade-package {{ package }}
 
-# recipe is only used if we want upgrade packages outside of dependabot
-upgrade-all: devenv
-    uv lock --upgrade
+# recipe is used for doing lockfileMaintenance via update-dependencies action, until min release age is respected fo uv
+upgrade-all cooldown="7 days ago": devenv
+    uv lock --upgrade --exclude-newer "{{ cooldown }}"
 
 # update the companion requirements formatted file
 uvmirror file="requirements.uvmirror":
