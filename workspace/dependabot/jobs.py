@@ -55,6 +55,7 @@ def report_rota() -> str:
         ("opensafely-core", "repo-template"),
         ("opensafely", "documentation"),
         ("ebmdatalab", "bennett.ox.ac.uk"),
+        ("ebmdatalab", "team-manual"),
         ("bennettoxford", "opensafely-wp"),
     ]
     repo_links = [
