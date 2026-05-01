@@ -97,7 +97,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.5.1
+pre-commit==4.6.0
 proto-plus==1.27.2
     # via google-api-core
 protobuf==7.34.1
@@ -141,7 +141,7 @@ requests==2.33.0
     # via
     #   bennettbot
     #   google-api-core
-ruff==0.15.9
+ruff==0.15.11
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.27.0
