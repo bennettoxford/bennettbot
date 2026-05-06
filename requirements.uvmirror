@@ -22,7 +22,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   pytest
 coverage==7.13.5
     # via pytest-cov
-cryptography==46.0.7
+cryptography==47.0.0
     # via
     #   google-auth
     #   paramiko
@@ -87,7 +87,7 @@ marshmallow==4.3.0
 mocket==3.14.1
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.1
+packaging==26.2
     # via
     #   gunicorn
     #   pytest
@@ -164,7 +164,7 @@ urllib3==2.6.3
     # via
     #   mocket
     #   requests
-virtualenv==21.2.4
+virtualenv==21.3.0
     # via pre-commit
 werkzeug==3.1.8
     # via flask
