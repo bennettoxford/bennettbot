@@ -143,7 +143,7 @@ IGNORED_WORKFLOWS = {
         21967294,  # [On PR] Dependabot auto-approve and enable auto-merge
     ],
     "opensafely-core/sqlrunner": [
-        37329087,  # [On PR] Auto merge Dependabot PRs
+        108481072,  # [Removed] Dependabot Updates
     ],
     "bennettoxford/bennettbot": [
         32719413,  # [On PR] Auto merge Dependabot PRs
