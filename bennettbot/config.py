@@ -28,11 +28,11 @@ def get_support_config(channels=None):
                 settings.SLACK_BENNETT_ADMINS_CHANNEL,
                 settings.SLACK_BENNETT_ADMINS_CHANNEL,
             ),
-            # Match "bennett-admins" or "bennet-admins" as a word (treating hyphens as
-            # word characters), except if it's preceded by a slash to avoid matching it
-            # in URLs
+            # Match any of "bennett-admins" or "bennet-admins" or "bennett-admin" or
+            # "bennet-admin" as a word (treating hyphens as word characters), except if
+            # it's preceded by a slash to avoid matching it in URLs
             "regex": re.compile(
-                r".*(^|[^\w\-/])bennett?-admins($|[^\w\-]).*", flags=re.I
+                r".*(^|[^\w\-/])bennett?-admins?($|[^\w\-]).*", flags=re.I
             ),
             "reaction": "flamingo",
         },
