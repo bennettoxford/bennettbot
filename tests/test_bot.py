@@ -477,8 +477,10 @@ def _tech_support_test_params():
         ("tech-support - this message should match", "C0002", {}, "C0001"),
         ("This message should match - tech-support", "C0002", {}, "C0001"),
         ("This message should match the bennett-admins listener", "C0002", {}, "C0000"),
-        # deliberate typo below
+        # deliberate typos below
         ("This message should match the bennet-admins listener", "C0002", {}, "C0000"),
+        ("This message should match the bennett-admin listener", "C0002", {}, "C0000"),
+        ("This message should match the bennet-admin listener", "C0002", {}, "C0000"),
     ]
 
 
