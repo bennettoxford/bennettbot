@@ -53,6 +53,7 @@ def report_rota() -> str:
         ("opensafely-core", "actions-registry"),
         ("opensafely-core", "research-template-docker"),
         ("opensafely-core", "repo-template"),
+        ("opensafely-core", "osgithub"),
         ("opensafely", "documentation"),
         ("ebmdatalab", "bennett.ox.ac.uk"),
         ("ebmdatalab", "team-manual"),
