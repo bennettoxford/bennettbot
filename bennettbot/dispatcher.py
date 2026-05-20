@@ -241,34 +241,45 @@ class MessageChecker:
             # make sure that messages sent late in the day still get picked up
             today = datetime.today()
             check_from = (today - timedelta(days=2)).strftime("%Y-%m-%d")
-            for keyword in self.config:
-                self.check_messages(keyword, check_from)
+            for support_type in self.config:
+                self.check_messages(support_type, check_from)
             time.sleep(delay)
 
-    def check_messages(self, keyword, after):
-        logger.debug("Checking %s messages", keyword)
-        reaction = self.config[keyword]["reaction"]
-        channel = self.config[keyword]["support_channel"]
-        messages = self.user_slack_client.search_messages(
-            query=(
-                # Search for messages with the keyword but without the expected reaction
-                # Wrap the keyword in double quotes so we don't return "tech support" as
-                # well as "tech-support"
-                f'"{keyword}" -has::{reaction}: '
-                # exclude messages in the channel itself
-                f"-in:#{channel} "
-                # exclude messages from the bot
-                f"-from:@{settings.SLACK_APP_USERNAME} "
-                # exclude DMs as the auto-responders don't respond to these anyway
-                f"-is:dm "
-                # only include messages from today and yesterday
-                f"after:{after}"
+    def check_messages(self, support_type, after):
+        logger.debug("Checking %s messages", support_type)
+        reaction = self.config[support_type]["reaction"]
+        channel = self.config[support_type]["support_channel"]
+        keywords = self.config[support_type]["search_keywords"]
+        regex = self.config[support_type]["regex"]
+
+        messages = []
+        for keyword in keywords:
+            messages.extend(
+                self.user_slack_client.search_messages(
+                    query=(
+                        # Search for messages with the keyword but without the expected reaction
+                        # Wrap the keyword in double quotes so we don't return "tech support" as
+                        # well as "tech-support"
+                        f'"{keyword}" -has::{reaction}: '
+                        # exclude messages in the channel itself
+                        f"-in:#{channel} "
+                        # exclude messages from the bot
+                        f"-from:@{settings.SLACK_APP_USERNAME} "
+                        # exclude DMs as the auto-responders don't respond to these anyway
+                        f"-is:dm "
+                        # only include messages from today and yesterday
+                        f"after:{after}"
+                    )
+                )["messages"]["matches"]
             )
-        )["messages"]["matches"]
+
+        handled = []
         for message in messages:
+            if message in handled:
+                continue
+            handled.append(message)
             # remove any URLs from the message text; we don't want to match these
-            text = re.sub(r"<http.+>", "", message["text"])
-            if keyword not in text:
+            if not re.match(regex, message["text"]):
                 # Either the message contained the keyword in a URL only (and we've
                 # just removed it), or it didn't contain the keyword at all.
                 # The latter happens if it's a forwarded message or a copy/pasted link.

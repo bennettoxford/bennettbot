@@ -111,10 +111,10 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
     """
     support_config = get_support_config(channels)
     # Check that channel settings mapped to valid channel IDs
-    for support in support_config.values():
+    for support_type, support in support_config.items():
         if support["support_channel"] not in channels.values():
             raise ValueError(
-                f"{support['keyword']} channel id '{support['support_channel']}' not found"
+                f"{support_type} channel id '{support['support_channel']}' not found"
             )
 
     @app.event(
@@ -259,7 +259,11 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
     )
     def repost_to_bennett_admins(event, say, ack):
         repost_support_request_to_channel(
-            event, say, ack, **support_config["bennett-admins"]
+            event,
+            say,
+            ack,
+            support_type="bennett-admins",
+            **support_config["bennett-admins"],
         )
 
     @app.event(
@@ -268,11 +272,15 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
     )
     def repost_to_tech_support(event, say, ack):
         repost_support_request_to_channel(
-            event, say, ack, **support_config["tech-support"]
+            event,
+            say,
+            ack,
+            support_type="tech-support",
+            **support_config["tech-support"],
         )
 
     def repost_support_request_to_channel(
-        event, say, ack, *, keyword, reaction, support_channel, **kwargs
+        event, say, ack, *, support_type, reaction, support_channel, **kwargs
     ):
         # acknowledge the messages
         ack()
@@ -294,8 +302,8 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             app.client.reactions_add(
                 channel=channel, timestamp=message["ts"], name=reaction
             )
-            logger.info(f"Received {keyword} message", message=message["text"])
-            if keyword == "tech-support":
+            logger.info(f"Received {support_type} message", message=message["text"])
+            if support_type == "tech-support":
                 # If out of office, respond with an ooo message, but still repost to channel
                 out_of_office_until = tech_support_out_of_office()
                 if out_of_office_until:
@@ -312,7 +320,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             say(message_url, channel=support_channel)
         else:
             say(
-                f"Sorry, I can't call {keyword} from this conversation.",
+                f"Sorry, I can't call {support_type} from this conversation.",
                 channel=channel,
             )
 
