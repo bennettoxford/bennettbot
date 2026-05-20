@@ -10,13 +10,13 @@ dependencies = [
   "fab-classic<=1.21.0",
   "flask<=3.1.3",
   "gunicorn<=25.3.0",
-  "requests<=2.33.1",
+  "requests<=2.34.0",
   "slack_bolt<=1.28.0",
   "structlog<=25.5.0",
   # for op commands
   "django-dotenv<=1.4.2",
   # for commands that read from Google Sheets
-  "google-api-python-client<=2.195.0",
+  "google-api-python-client<=2.196.0",
   "pyparsing<=3.3.2",
 ]
 
