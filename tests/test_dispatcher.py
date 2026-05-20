@@ -10,6 +10,7 @@ from mocket import Mocket, Mocketizer
 from mocket.mockhttp import Entry
 
 from bennettbot import scheduler, settings
+from bennettbot.config import get_support_config
 from bennettbot.dispatcher import JobDispatcher, MessageChecker, run_once
 from bennettbot.slack import slack_web_client
 
@@ -565,50 +566,65 @@ def test_message_checker_run(freezer):
     run_fn = Mock(side_effect=[True, True, False])
     checker.do_check(run_fn, delay=0.1)
 
-    # search.messages is called twice for each run of the checker
+    # search.messages is called once per search keyword for each
+    # run of the checker (mocked above to run only 2x)
     # no matches, so no reactions or messages reposted.
-    assert len(Mocket.request_list()) == 4
+    total_search_keywords = sum(
+        len(support_config["search_keywords"])
+        for support_config in get_support_config().values()
+    )
+    assert len(Mocket.request_list()) == 2 * total_search_keywords
     requests_by_path = get_mock_received_requests()
     last_search_query = requests_by_path["/api/search.messages"][-1]["query"][0]
     assert "after:2024-10-06" in last_search_query
 
 
 @pytest.mark.parametrize(
-    "keyword,support_channel,reaction",
+    "support_type,support_channel,reaction",
     (
         ["tech-support", settings.SLACK_TECH_SUPPORT_CHANNEL, "sos"],
         ["bennett-admins", settings.SLACK_BENNETT_ADMINS_CHANNEL, "flamingo"],
     ),
 )
-def test_message_checker_matched_messages(keyword, support_channel, reaction):
+def test_message_checker_matched_messages(support_type, support_channel, reaction):
+    support_config = get_support_config()
+    keywords = support_config[support_type]["search_keywords"]
+
+    mock_matches = [
+        {
+            "text": "This is a forwarded message",
+            "channel": {"id": "C4444"},
+            "ts": "100.1",
+        }
+    ]
+    for keyword in keywords:
+        mock_matches.extend(
+            [
+                {
+                    "text": f"Calling {keyword}",
+                    "channel": {"id": "C4444"},
+                    "ts": "100.0",
+                },
+                {
+                    "text": f"Ignore message with url matches only <https://calling/{keyword}/test>",
+                    "channel": {"id": "C4444"},
+                    "ts": "100.2",
+                },
+                {
+                    "text": f"But respond if {keyword} is also in the text <https://calling/{keyword}/test>",
+                    "channel": {"id": "C4444"},
+                    "ts": "100.3",
+                },
+            ]
+        )
+
     mocket_register(
         {
             "search.messages": [
                 {
                     "ok": True,
                     "messages": {
-                        "matches": [
-                            {
-                                "text": f"Calling {keyword}",
-                                "channel": {"id": "C4444"},
-                                "ts": "100.0",
-                            },
-                            {
-                                "text": "This is a forwarded message",
-                                "channel": {"id": "C4444"},
-                                "ts": "100.1",
-                            },
-                            {
-                                "text": f"Ignore message with url matches only <https://calling/{keyword}/test>",
-                                "channel": {"id": "C4444"},
-                                "ts": "100.2",
-                            },
-                            {
-                                "text": f"But respond if {keyword} is also in the text <https://calling/{keyword}/test>",
-                                "channel": {"id": "C4444"},
-                                "ts": "100.3",
-                            },
-                        ],
+                        "matches": mock_matches,
                     },
                 }
             ],
@@ -618,11 +634,11 @@ def test_message_checker_matched_messages(keyword, support_channel, reaction):
 
     checker = MessageChecker(slack_web_client("bot"), slack_web_client("user"))
 
-    checker.check_messages(keyword, "2024-03-02")
-    # search.messages is called once
-    # other 3 endpoints called once each for 2 matched messages requiring
+    checker.check_messages(support_type, "2024-03-02")
+    # search.messages is called once per keyword
+    # other 3 endpoints called once each for 2 matched messages per keyword requiring
     # reaction and reposting.
-    assert len(Mocket.request_list()) == 7
+    assert len(Mocket.request_list()) == len(keywords) + (3 * 2 * len(keywords))
 
     requests_by_path = get_mock_received_requests()
     assert requests_by_path["/api/search.messages"] == [
@@ -633,6 +649,7 @@ def test_message_checker_matched_messages(keyword, support_channel, reaction):
                 "after:2024-03-02"
             ]
         }
+        for keyword in keywords
     ]
     # fetch the permalink for the message with ts matching the message to be reposted
     assert requests_by_path["/api/chat.getPermalink"] == [
@@ -644,16 +661,19 @@ def test_message_checker_matched_messages(keyword, support_channel, reaction):
             "channel": ["C4444"],
             "message_ts": ["100.3"],
         },
-    ]
-    # reposted to correct channel
-    assert requests_by_path["/api/chat.postMessage"][0] == {
-        "channel": support_channel,
-        "text": "http://example.com",
-    }
-    assert requests_by_path["/api/chat.postMessage"][1] == {
-        "channel": support_channel,
-        "text": "http://example.com",
-    }
+    ] * len(keywords)
+    # reposted to correct channel for each message/keyword
+    assert (
+        requests_by_path["/api/chat.postMessage"]
+        == [
+            {
+                "channel": support_channel,
+                "text": "http://example.com",
+            }
+        ]
+        * len(keywords)
+        * 2
+    )
 
     # reacted with correct emoji
     assert requests_by_path["/api/reactions.add"] == [
@@ -667,7 +687,7 @@ def test_message_checker_matched_messages(keyword, support_channel, reaction):
             "name": [reaction],
             "timestamp": ["100.3"],
         },
-    ]
+    ] * len(keywords)
 
 
 def test_python_version():
