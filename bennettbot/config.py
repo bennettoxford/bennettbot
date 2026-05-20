@@ -7,7 +7,8 @@ def get_support_config(channels=None):
     channels = channels or {}
     return {
         "tech-support": {
-            "keyword": "tech-support",
+            # list keywords; needed for the MessageChecker search
+            "search_keywords": ["tech-support"],
             # Use the support setting (a channel name or channel ID) to get the channel.
             # We first attempt to retrieve channel ID from the channels dict (if provided),
             # otherwise we default to using the setting value as is.
@@ -20,7 +21,9 @@ def get_support_config(channels=None):
             "reaction": "sos",
         },
         "bennett-admins": {
-            "keyword": "bennett-admins",
+            # list keywords; needed for the MessageChecker search. Note we only need to
+            # list the singular as it's contained in the plurals
+            "search_keywords": ["bennet-admin", "bennett-admin"],
             # Use the support setting (a channel name or channel ID) to get the channel.
             # We first attempt to retrieve channel ID from the channels dict (if provided),
             # otherwise we default to using the setting value as is.
