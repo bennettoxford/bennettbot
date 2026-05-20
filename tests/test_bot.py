@@ -35,7 +35,7 @@ pytestmark = pytest.mark.freeze_time(T0)
 
 
 def get_mock_app():
-    app = App(raise_error_for_unhandled_request=True)
+    app = App(raise_error_for_unhandled_request=True, process_before_response=True)
     channels = bot.get_channels(app.client)
     bot_user_id, internal_user_ids = bot.get_users_info(app.client)
     bot.join_all_channels(app.client, channels, bot_user_id)
@@ -905,24 +905,8 @@ def handle_message(
 def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     request = get_mock_request(event_type, event_kwargs)
     resp = mock_app.dispatch(request)
-    # App.dispatch() applies all middleware and dispatches the request to the correct
-    # code path.
-    # https://github.com/slackapi/bolt-python/blob/v1.6.1/slack_bolt/app/app.py#L433
-    # Initially the response has status 200 and body "" (the default in the dispatch method).
-    # This is the response that the dispatch method returns as it applies middleware
-    # Previously this function just waited for 0.1 seconds to allow the resp to settle,
-    # but occasionally in CI that appears to not be long enough. We now give it 6 attempts
-    # with an exponential backoff to resolve (waiting for up to 3.15s in total; if it takes longer
-    # than that, something is clearly wrong).
-    # Note: we check for a resp.body because all tests that use this method return _something_ in
-    # their body, whether they're expected to be successful or not.
-    attempts = 0
-    delay = 0.05
-    while resp.body == "" and attempts < 6:
-        attempts += 1
-        time.sleep(delay)
-        delay *= 2
-
+    # process_before_response=True (set in get_mock_app) makes dispatch() run listeners
+    # synchronously, so resp is fully settled by the time dispatch() returns.
     assert resp.status == expected_status
     return resp
 
