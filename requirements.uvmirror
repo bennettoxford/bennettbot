@@ -14,7 +14,7 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.3.3
+click==8.4.0
     # via flask
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
@@ -26,7 +26,7 @@ cryptography==48.0.0
     # via
     #   google-auth
     #   paramiko
-decorator==5.2.1
+decorator==5.3.1
     # via mocket
 distlib==0.4.0
     # via virtualenv
@@ -48,7 +48,7 @@ google-api-core==2.30.3
     # via google-api-python-client
 google-api-python-client==2.196.0
     # via bennettbot
-google-auth==2.52.0
+google-auth==2.53.0
     # via
     #   google-api-core
     #   google-api-python-client
@@ -104,7 +104,7 @@ pluggy==1.6.0
 pre-commit==4.6.0
 proto-plus==1.28.0
     # via google-api-core
-protobuf==7.34.1
+protobuf==7.35.0
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -152,7 +152,7 @@ six==1.17.0
     # via python-dateutil
 slack-bolt==1.28.0
     # via bennettbot
-slack-sdk==3.41.0
+slack-sdk==3.42.0
     # via slack-bolt
 structlog==25.5.0
     # via bennettbot
@@ -164,7 +164,7 @@ urllib3==2.7.0
     # via
     #   mocket
     #   requests
-virtualenv==21.3.2
+virtualenv==21.3.3
     # via pre-commit
 werkzeug==3.1.8
     # via flask
