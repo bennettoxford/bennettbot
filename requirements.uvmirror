@@ -32,7 +32,7 @@ distlib==0.4.0
     # via virtualenv
 django-dotenv==1.4.2
     # via bennettbot
-environs==14.6.0
+environs==15.0.1
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
@@ -57,7 +57,7 @@ google-auth-httplib2==0.4.0
     # via google-api-python-client
 googleapis-common-protos==1.75.0
     # via google-api-core
-gunicorn==25.3.0
+gunicorn==26.0.0
     # via bennettbot
 h11==0.16.0
     # via mocket
