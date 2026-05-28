@@ -6,10 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   # Main prod requirements
-  "environs<=14.6.0",
+  "environs<=15.0.1",
   "fab-classic<=1.21.0",
   "flask<=3.1.3",
-  "gunicorn<=25.3.0",
+  "gunicorn<=26.0.0",
   "requests<=2.34.2",
   "slack_bolt<=1.28.0",
   "structlog<=25.5.0",
