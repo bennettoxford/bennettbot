@@ -147,7 +147,7 @@ requests==2.34.2
     # via
     #   bennettbot
     #   google-api-core
-ruff==0.15.13
+ruff==0.15.14
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.28.0
