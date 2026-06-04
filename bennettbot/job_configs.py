@@ -702,19 +702,24 @@ def get_template_params(command, wrapper="[]"):
 def validate_job_config(job_type, job_config):
     """Validate that job_config contains expected keys."""
 
-    expected_keys = {
+    # Required keys are defaulted in build_config() above, so every
+    # built job_config dict ends up with all of them. Optional keys are
+    # left absent unless the job explicitly opts in - they don't appear
+    # in the built config dict otherwise, keeping it tidy.
+    required_keys = {
         "run_args_template",
         "report_stdout",
         "report_format",
         "report_success",
         "call_tech_support_on_error",
     }
+    optional_keys = {"suppress_empty"}
 
-    if missing_keys := (expected_keys - job_config.keys()):
+    if missing_keys := (required_keys - job_config.keys()):
         msg = f"Job {job_type} is missing keys {missing_keys}"
         raise RuntimeError(msg)
 
-    if extra_keys := (job_config.keys() - expected_keys):
+    if extra_keys := (job_config.keys() - required_keys - optional_keys):
         msg = f"Job {job_type} has extra keys {extra_keys}"
         raise RuntimeError(msg)
 

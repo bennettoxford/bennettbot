@@ -41,6 +41,7 @@ Each key in `raw_config` refers to a category of jobs (the job namespace), and m
             "report_stdout": boolean, default=False,  # whether to report contents of stdout to slack
             "report_success": boolean, default=True,  # whether to report success to slack
             "report_format": "text/blocks/code/file",  # format of slack report, plain text, blocks, code or file upload (default="text")
+            "suppress_empty": boolean, default=False,  # if True and stdout is empty, post nothing to slack (instead of the default "No output found" message); useful for scheduled check-style jobs that should only ping when there's something to report
         }
     }
     "slack": [

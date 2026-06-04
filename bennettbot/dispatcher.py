@@ -136,13 +136,21 @@ class JobDispatcher:
         )
         if not error:
             if self.job_config["report_stdout"]:
-                with open(self.stdout_path) as f:
-                    if self.job_config["report_format"] == "blocks":
-                        msg = json.load(f)
-                    else:
-                        msg = f.read()
-                    if not msg:
-                        msg = f"No output found for command `{self.job['type']}`"
+                content = self.stdout_path.read_text()
+                if self.job_config["report_format"] == "blocks":
+                    # a suppress_empty job legitimately produces no stdout
+                    # when there's nothing to report, so only load json if there's
+                    # content to load.
+                    msg = json.loads(content) if content.strip() else None
+                else:
+                    msg = content
+                if not msg:
+                    # Empty stdout (or empty blocks array): suppress_empty
+                    # jobs stay silent; everything else falls back
+                    # to a placeholder message so the channel sees something.
+                    if self.job_config.get("suppress_empty"):
+                        return
+                    msg = f"No output found for command `{self.job['type']}`"
             elif self.job_config["report_success"]:
                 msg = f"Command `{self.job['type']}` succeeded"
             else:

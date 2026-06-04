@@ -460,6 +460,24 @@ def test_python_job_with_no_output():
         assert f.read() == ""
 
 
+def test_python_job_with_no_output_suppressed():
+    # With suppress_empty=True, empty stdout means no Slack message is posted.
+    log_dir = build_log_dir("test_python_job_no_output_suppress")
+
+    scheduler.schedule_job("test_python_job_no_output_suppress", {}, "channel", TS, 0)
+    job = scheduler.reserve_job()
+
+    do_job(slack_web_client(), job)
+    assert_slack_client_sends_messages(
+        messages_kwargs=[
+            {"channel": "logs", "text": "about to start"},
+        ],
+    )
+
+    with open(os.path.join(log_dir, "stdout")) as f:
+        assert f.read() == ""
+
+
 def test_job_success_config_with_no_python_file():
     log_dir = build_log_dir("test1_good_job")
 
