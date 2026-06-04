@@ -128,6 +128,10 @@ class JobDispatcher:
         required."""
 
         error = rc != 0
+        # React to the requesting Slack message first, before the various
+        # early-returns below - we want the completion signal regardless of
+        # which branch we end up taking.
+        self.react_to_requesting_message("x" if error else "white_check_mark")
         repost_to_tech_support_on_error = (
             # Call tech-support unless specified otherwise in the job config
             # But not if we're in a DM with the bot, because no-one
@@ -183,6 +187,24 @@ class JobDispatcher:
             self.slack_client.chat_postMessage(
                 channel=settings.SLACK_TECH_SUPPORT_CHANNEL, text=message_url
             )
+
+    def react_to_requesting_message(self, emoji):
+        """Add an emoji reaction to the Slack message that triggered this job."""
+        message_ts = self.job.get("message_ts")
+        if not message_ts:
+            # Note that jobs might not have an originating message (e.g scheduled/automated
+            # runs that call schedule_job() directly, without going via the bot.py. The
+            # main example of this is the webhook in webserver/github.py which schedules
+            # project deploys via callbacks from GitHub).
+            return
+        try:
+            # Note: reacting to the original message isn't the most important thing; if
+            # something goes wrong here, we don't really care, so just swallow any error
+            self.slack_client.reactions_add(
+                channel=self.job["channel"], timestamp=message_ts, name=emoji
+            )
+        except Exception:  # pragma: no cover
+            logger.exception("Failed to add reaction", emoji=emoji)
 
     def set_up_cwd(self):
         """Ensure cwd exists, and maybe refresh fabfile."""

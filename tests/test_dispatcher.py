@@ -14,7 +14,12 @@ from bennettbot.config import get_support_config
 from bennettbot.dispatcher import JobDispatcher, MessageChecker, run_once
 from bennettbot.slack import slack_web_client
 
-from .assertions import assert_call_counts, assert_slack_client_sends_messages
+from .assertions import (
+    assert_call_counts,
+    assert_slack_client_doesnt_react_to_message,
+    assert_slack_client_reacts_to_message,
+    assert_slack_client_sends_messages,
+)
 from .job_configs import config
 from .mock_http_request import (
     get_mock_received_requests,
@@ -461,7 +466,8 @@ def test_python_job_with_no_output():
 
 
 def test_python_job_with_no_output_suppressed():
-    # With suppress_empty=True, empty stdout means no Slack message is posted.
+    # With suppress_empty=True and no message_ts, empty stdout means no
+    # Slack message is posted and no reaction is added.
     log_dir = build_log_dir("test_python_job_no_output_suppress")
 
     scheduler.schedule_job("test_python_job_no_output_suppress", {}, "channel", TS, 0)
@@ -473,9 +479,76 @@ def test_python_job_with_no_output_suppressed():
             {"channel": "logs", "text": "about to start"},
         ],
     )
+    assert_slack_client_doesnt_react_to_message()
 
     with open(os.path.join(log_dir, "stdout")) as f:
         assert f.read() == ""
+
+
+def test_python_job_with_no_output_suppressed_reacts_to_message():
+    # With suppress_empty=True and a message_ts, the dispatcher reacts to the
+    # requesting Slack message instead of posting a "no output" message.
+    build_log_dir("test_python_job_no_output_suppress")
+
+    scheduler.schedule_job(
+        "test_python_job_no_output_suppress",
+        {},
+        "channel",
+        TS,
+        0,
+        message_ts="1234567890.123456",
+    )
+    job = scheduler.reserve_job()
+
+    do_job(slack_web_client(), job)
+    assert_slack_client_sends_messages(
+        messages_kwargs=[
+            {"channel": "logs", "text": "about to start"},
+        ],
+    )
+    assert_slack_client_reacts_to_message(1)
+    request = get_mock_received_requests()["/api/reactions.add"][0]
+    assert request["channel"] == ["channel"]
+    assert request["timestamp"] == ["1234567890.123456"]
+    assert request["name"] == ["white_check_mark"]
+
+
+def test_successful_job_reacts_with_check_mark():
+    # A successful slack-triggered job adds :white_check_mark: to the
+    # requesting message.
+    build_log_dir("test_good_job")
+
+    scheduler.schedule_job(
+        "test_good_job", {}, "channel", TS, 0, message_ts="1234567890.123456"
+    )
+    job = scheduler.reserve_job()
+
+    do_job(slack_web_client(), job)
+    assert_slack_client_reacts_to_message(1)
+    request = get_mock_received_requests()["/api/reactions.add"][0]
+    assert request["name"] == ["white_check_mark"]
+    assert request["timestamp"] == ["1234567890.123456"]
+
+
+def test_failed_job_reacts_with_x():
+    # A failed slack-triggered job adds :x: to the requesting message.
+    build_log_dir("test_bad_python_job")
+
+    scheduler.schedule_job(
+        "test_bad_python_job",
+        {},
+        "channel",
+        TS,
+        0,
+        message_ts="1234567890.123456",
+    )
+    job = scheduler.reserve_job()
+
+    do_job(slack_web_client(), job)
+    assert_slack_client_reacts_to_message(1)
+    request = get_mock_received_requests()["/api/reactions.add"][0]
+    assert request["name"] == ["x"]
+    assert request["timestamp"] == ["1234567890.123456"]
 
 
 def test_job_success_config_with_no_python_file():

@@ -1,6 +1,10 @@
+import sqlite3
+from contextlib import closing
+
 import pytest
 
-from bennettbot import scheduler
+from bennettbot import scheduler, settings
+from bennettbot.connection import get_connection
 
 from .assertions import (
     assert_job_matches,
@@ -272,3 +276,32 @@ def test_mark_job_done(freezer):
     scheduler.mark_job_done(job_id)
 
     assert not scheduler.get_jobs()
+
+
+def test_get_connection_adds_message_ts_to_legacy_table():
+    """Pre-message_ts job tables should be migrated on connection."""
+    with closing(sqlite3.connect(settings.DB_PATH)) as conn:
+        conn.execute(
+            """
+            CREATE TABLE job (
+                id INTEGER PRIMARY KEY,
+                type TEXT NOT NULL,
+                args TEXT,
+                channel TEXT,
+                thread_ts TEXT,
+                start_after DATETIME,
+                started_at DATETIME,
+                is_im BOOLEAN
+            )
+            """
+        )
+        conn.commit()
+    with closing(get_connection()) as conn:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(job)")}
+    assert "message_ts" in columns
+
+
+def test_schedule_job_with_message_ts():
+    scheduler.schedule_job("good_job", {"k": "v"}, "channel", TS, 0, message_ts="42.42")
+    jobs = scheduler.get_jobs_of_type("good_job")
+    assert jobs[0]["message_ts"] == "42.42"

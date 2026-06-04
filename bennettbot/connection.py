@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS job (
     args TEXT,
     channel TEXT,
     thread_ts TEXT,
+    message_ts TEXT,
     start_after DATETIME,
     started_at DATETIME,
     is_im BOOLEAN
@@ -33,4 +34,8 @@ def get_connection():
     conn = sqlite3.connect(settings.DB_PATH)
     conn.row_factory = dict_factory
     conn.executescript(SCHEMA)
+    # Migration: ensure message_ts column exists on pre-existing job tables.
+    existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(job)")}
+    if "message_ts" not in existing_cols:
+        conn.execute("ALTER TABLE job ADD COLUMN message_ts TEXT")
     return conn
