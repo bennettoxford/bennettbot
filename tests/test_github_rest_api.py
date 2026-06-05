@@ -75,10 +75,12 @@ def test_client_sends_expected_headers():
 def test_get_paginated_json_with_results_key_unwraps_pages():
     client = github_rest_api.GitHubAPIClient("test-token")
     page1 = MagicMock(
+        status_code=200,
         links={"next": {"url": "https://api.github.com/page2"}},
+        headers={},
     )
     page1.json.return_value = {"codespaces": [{"name": "a"}, {"name": "b"}]}
-    page2 = MagicMock(links={})
+    page2 = MagicMock(status_code=200, links={}, headers={})
     page2.json.return_value = {"codespaces": [{"name": "c"}]}
     with patch.object(
         github_rest_api.readonly_session, "get", side_effect=[page1, page2]
@@ -93,9 +95,13 @@ def test_get_paginated_json_with_results_key_unwraps_pages():
 
 def test_get_paginated_json_follows_link_header_and_passes_params_once():
     client = github_rest_api.GitHubAPIClient("test-token")
-    page1 = MagicMock(links={"next": {"url": "https://api.github.com/page2"}})
+    page1 = MagicMock(
+        status_code=200,
+        links={"next": {"url": "https://api.github.com/page2"}},
+        headers={},
+    )
     page1.json.return_value = [1, 2, 3]
-    page2 = MagicMock(links={})
+    page2 = MagicMock(status_code=200, links={}, headers={})
     page2.json.return_value = [4, 5]
     with patch.object(
         github_rest_api.readonly_session, "get", side_effect=[page1, page2]
@@ -109,4 +115,30 @@ def test_get_paginated_json_follows_link_header_and_passes_params_once():
     # The Link-header URL already encodes the original query string, so subsequent
     # pages must not re-send the caller's params.
     assert mock_get.call_args_list[0].kwargs["params"] == {"foo": "bar"}
-    assert mock_get.call_args_list[1].kwargs["params"] is None
+    # The second call is a positional-only invocation of `_session.get(next_url,
+    # headers=…)` so it has no `params` kwarg.
+    assert "params" not in mock_get.call_args_list[1].kwargs
+
+
+def test_get_paginated_json_exposes_first_page_etag():
+    client = github_rest_api.GitHubAPIClient("test-token")
+    response = MagicMock(status_code=200, links={}, headers={"ETag": "p1-etag"})
+    response.json.return_value = [1, 2]
+    with patch.object(github_rest_api.readonly_session, "get", return_value=response):
+        result = client.get_paginated_json("https://api.github.com/x")
+    assert result.etag == "p1-etag"
+    assert not result.not_modified
+    assert list(result) == [1, 2]
+
+
+def test_get_paginated_json_with_etag_returns_not_modified_on_304():
+    client = github_rest_api.GitHubAPIClient("test-token")
+    response = MagicMock(status_code=304)
+    with patch.object(
+        github_rest_api.readonly_session, "get", return_value=response
+    ) as mock_get:
+        result = client.get_paginated_json("https://api.github.com/x", etag="old-etag")
+    assert result.not_modified
+    assert result.etag == "old-etag"
+    assert list(result) == []
+    assert mock_get.call_args.kwargs["headers"]["If-None-Match"] == "old-etag"

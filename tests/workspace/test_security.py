@@ -8,10 +8,17 @@ from mocket import Mocketizer, mocketize
 from mocket.mockhttp import Entry
 
 from workspace.security import jobs
+from workspace.utils.github_rest_api import PagedResponse
 
 
 ALERTS_FIXTURE_PATH = Path("tests/workspace/dependabot_alerts.json")
 ALERTS_URL = "https://api.github.com/repos/opensafely-core/airlock/dependabot/alerts"
+
+
+@pytest.fixture(autouse=True)
+def isolated_cache(tmp_path, monkeypatch):
+    """Each test gets its own cache file so cache state doesn't bleed between tests."""
+    monkeypatch.setattr(jobs, "CACHE_PATH", tmp_path / "security_cache.json")
 
 
 @pytest.fixture
@@ -93,6 +100,72 @@ def test_get_counts_no_alerts():
     )
     reporter = jobs.RepoAlertsReporter("opensafely-core/airlock")
     assert reporter.get_counts() == {"critical": 0, "high": 0}
+
+
+def test_cache_hit_uses_cached_alerts():
+    # Pre-populate the cache; the github client returns a not_modified
+    # response to simulate a 304 from the server.
+    cached_alerts = [{"security_advisory": {"severity": "critical"}}]
+    jobs.save_cache(
+        {
+            "opensafely-core/airlock|critical,high": {
+                "etag": "old-etag",
+                "alerts": cached_alerts,
+            }
+        }
+    )
+    with patch.object(
+        jobs.github_client,
+        "get_paginated_json",
+        return_value=PagedResponse(
+            records=iter([]), etag="old-etag", not_modified=True
+        ),
+    ) as mock_get:
+        reporter = jobs.RepoAlertsReporter("opensafely-core/airlock")
+    # The cached etag was passed through and the cached alerts re-used.
+    assert mock_get.call_args.kwargs["etag"] == "old-etag"
+    assert reporter.alerts == cached_alerts
+
+
+def test_cache_miss_stores_response_and_etag():
+    fresh_alerts = [{"security_advisory": {"severity": "high"}}]
+    with patch.object(
+        jobs.github_client,
+        "get_paginated_json",
+        return_value=PagedResponse(records=iter(fresh_alerts), etag="new-etag"),
+    ):
+        reporter = jobs.RepoAlertsReporter("opensafely-core/airlock")
+    assert reporter.alerts == fresh_alerts
+    assert jobs.load_cache() == {
+        "opensafely-core/airlock|critical,high": {
+            "etag": "new-etag",
+            "alerts": fresh_alerts,
+        }
+    }
+
+
+def test_cache_key_distinguishes_severities():
+    # A cache entry for critical/high must not be served for an
+    # all-severities request: the API filter is different so the cached
+    # alerts list would be missing entries.
+    jobs.save_cache(
+        {
+            "opensafely-core/airlock|critical,high": {
+                "etag": "default-etag",
+                "alerts": [{"security_advisory": {"severity": "critical"}}],
+            }
+        }
+    )
+    with patch.object(
+        jobs.github_client,
+        "get_paginated_json",
+        return_value=PagedResponse(records=iter([]), etag="all-sev-etag"),
+    ) as mock_get:
+        jobs.RepoAlertsReporter(
+            "opensafely-core/airlock", severities=jobs.ALL_SEVERITIES
+        )
+    # No cached etag was passed (different cache key for the all-severities request).
+    assert mock_get.call_args.kwargs["etag"] is None
 
 
 def test_report_with_alerts(mock_alerts_endpoint):

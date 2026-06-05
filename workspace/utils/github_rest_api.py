@@ -28,7 +28,7 @@ class ReadOnlySession(requests.Session):
         return super().request(method, url, *args, **kwargs)
 
 
-# Single session shared by all clients — it has no per-token state (auth
+# Single session shared by all clients - it has no per-token state (auth
 # headers are passed per-request), so sharing the underlying connection pool
 # is safe and tests can patch one location to intercept any client's calls.
 readonly_session = ReadOnlySession()
@@ -69,25 +69,76 @@ class GitHubAPIClient:
         self,
         url: str,
         params: dict | None = None,
+        etag: str | None = None,
         results_key: str | None = None,
-    ):
-        """Yield records across all pages, following the "next" Link header.
+    ) -> "PagedResponse":
+        """Fetch records across all pages, following the "next" Link header.
 
-        Returns a generator so large responses don't have to be materialised at once.
+        Returns a `PagedResponse` - an iterable that yields records lazily
+        (subsequent pages aren't fetched until consumed).
+
+        Optionally, pass an etag from a previous response to send
+        `If-None-Match` headers so callers can cache and reuse data.
+        Callers that don't care about caching can just iterate the result
+        and ignore etag/not_modified entirely.
+
+        Note: the ETag tracks the first page only. This
+        is reliable for endpoints where any change bubbles up to page 1
+        (e.g. lists sorted by created/updated desc), but for endpoints where
+        changes may be on subsequent pages only, alternative forms of caching
+        will be required.
 
         For endpoints whose JSON body is a bare array (e.g. Dependabot
         alerts), leave `results_key` as None. For endpoints that wrap the
         array under a key (e.g. `{"codespaces": [...]}`), pass that key
         so the helper can unwrap each page.
         """
-        while url:
-            response = readonly_session.get(url, headers=self.headers, params=params)
-            response.raise_for_status()
+        headers = dict(self.headers)
+        if etag is not None:
+            headers["If-None-Match"] = etag
+
+        # Fetch page 1 eagerly so the caller can read etag/not_modified before
+        # deciding whether to iterate.
+        response = readonly_session.get(url, headers=headers, params=params)
+        if response.status_code == 304:
+            return PagedResponse(records=iter(()), etag=etag, not_modified=True)
+        response.raise_for_status()
+
+        return PagedResponse(
+            records=self._walk_pages(response, results_key),
+            etag=response.headers.get("ETag"),
+        )
+
+    def _walk_pages(self, response, results_key):
+        """Yield records from `response`, then follow Link rel='next' pages."""
+        while True:
             page = response.json()
             if results_key is not None:
                 page = page[results_key]
             yield from page
             # The Link-header URL already includes the original query string,
-            # don't pass any params on subsequent calls as they'll conflict.
-            params = None
-            url = response.links.get("next", {}).get("url")
+            # so subsequent calls send no extra params.
+            next_url = response.links.get("next", {}).get("url")
+            if not next_url:
+                return
+            response = readonly_session.get(next_url, headers=self.headers)
+            response.raise_for_status()
+
+
+class PagedResponse:
+    """Iterable wrapper around the result of `GitHubAPIClient.get_paginated_json`.
+
+    Iterating yields each record across all pages (subsequent pages fetched
+    lazily). The first page's `ETag` is exposed for callers that want to
+    cache and send `If-None-Match` next time; `not_modified` is True when
+    the caller passed an `etag` that the server accepted (HTTP 304), in
+    which case iteration yields nothing.
+    """
+
+    def __init__(self, records, etag, not_modified=False):
+        self._records = records
+        self.etag = etag
+        self.not_modified = not_modified
+
+    def __iter__(self):
+        return iter(self._records)

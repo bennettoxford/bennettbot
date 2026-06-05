@@ -18,6 +18,22 @@ from workspace.utils.github_rest_api import GitHubAPIClient
 # `repo` for private-repo access).
 github_client = GitHubAPIClient(os.environ["DATA_TEAM_GITHUB_API_TOKEN"])
 
+# Local cache of the most recent Dependabot response per (repo, severities),
+# keyed by `"<repo>|<sev1>,<sev2>,…"`. Each entry stores the first-page ETag
+# plus the full alerts list, so we can send `If-None-Match` on subsequent
+# requests and skip re-downloading on 304 Not Modified.
+CACHE_PATH = settings.WRITEABLE_DIR / "security_cache.json"
+
+
+def load_cache() -> dict:
+    if not CACHE_PATH.exists():
+        return {}
+    return json.loads(CACHE_PATH.read_text())
+
+
+def save_cache(cache: dict) -> None:
+    CACHE_PATH.write_text(json.dumps(cache))
+
 
 ALL_SEVERITIES = ["critical", "high", "medium", "low"]
 DEFAULT_SEVERITIES = ["critical", "high"]
@@ -62,16 +78,35 @@ class RepoAlertsReporter:
         self.severities = severities or DEFAULT_SEVERITIES
         self.base_api_url = f"https://api.github.com/repos/{repo_full_name}/"
         self.dependabot_link = get_dependabot_alerts_link(repo_full_name)
-        self.alerts = list(self.get_open_alerts())
+        self.alerts = self.get_open_alerts()
 
-    def get_open_alerts(self):
+    def _cache_key(self) -> str:
+        # Severities are part of the key because the API filters server-side
+        # by `severity=…`; an entry cached for critical/high would silently
+        # return the wrong data for an all-severities request.
+        return f"{self.repo_full_name}|{','.join(self.severities)}"
+
+    def get_open_alerts(self) -> list:
+        """Fetch alerts, sending the cached ETag if available. On 304 we reuse the
+        cached alerts list; on 200 we replace the cache entry with the fresh response.
+        """
+        cache = load_cache()
+        cached = cache.get(self._cache_key(), {})
         url = f"{self.base_api_url}dependabot/alerts"
         params = {
             "state": "open",
             "severity": ",".join(self.severities),
             "per_page": 100,
         }
-        return github_client.get_paginated_json(url, params=params)
+        response = github_client.get_paginated_json(
+            url, params=params, etag=cached.get("etag")
+        )
+        if response.not_modified:
+            return cached["alerts"]
+        alerts = list(response)
+        cache[self._cache_key()] = {"etag": response.etag, "alerts": alerts}
+        save_cache(cache)
+        return alerts
 
     def get_counts(self) -> dict:
         counts = {sev: 0 for sev in self.severities}
