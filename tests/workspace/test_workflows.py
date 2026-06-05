@@ -135,7 +135,7 @@ def use_mock_results(patch_settings):
             }
             # Patch the config and use results from the mock cache
             with (
-                patch("workspace.workflows.config.REPOS", mock_repos_config),
+                patch("workspace.utils.repos_config.REPOS", mock_repos_config),
                 patch("workspace.workflows.jobs.load_cache", return_value=mock_cache),
                 patch(
                     "workspace.workflows.jobs.RepoWorkflowReporter",
@@ -812,7 +812,7 @@ def test_main_show_all():
 
 
 @patch(
-    "workspace.workflows.config.WORKFLOWS_KNOWN_TO_FAIL",
+    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
     {
         "opensafely/failing-repo": [82728346, 88048829, 94331150, 108457763, 113602598],
     },
@@ -908,7 +908,7 @@ def test_main_show_failed_found():
 
 
 @patch(
-    "workspace.workflows.config.WORKFLOWS_KNOWN_TO_FAIL",
+    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
     {
         # Second-last workflow is known to fail
         "opensafely-core/airlock": [108457763],
@@ -998,7 +998,7 @@ def test_main_show_invalid_target():
 
 
 @patch(
-    "workspace.workflows.config.CUSTOM_WORKFLOWS_GROUPS",
+    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
     {
         "check-links": {
             "header_text": "Link-checking workflows",
@@ -1068,7 +1068,7 @@ def test_show_group():
 
 
 @patch(
-    "workspace.workflows.config.CUSTOM_WORKFLOWS_GROUPS",
+    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
     {"check-links": ...},
 )
 def test_show_group_not_found():

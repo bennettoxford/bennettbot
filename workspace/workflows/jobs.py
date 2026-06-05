@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import requests
 
 from bennettbot import settings
+from workspace.utils import repos_config as config
 from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
@@ -14,7 +15,6 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
-from workspace.workflows import config
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
@@ -32,16 +32,6 @@ EMOJI = {
 
 def get_emoji(conclusion) -> str:
     return EMOJI.get(conclusion, EMOJI["other"])
-
-
-def get_locations_for_team(team: str) -> list[str]:
-    return [
-        f"{v['org']}/{repo}" for repo, v in config.REPOS.items() if v["team"] == team
-    ]
-
-
-def get_locations_for_org(org: str) -> list[str]:
-    return [f"{org}/{repo}" for repo, v in config.REPOS.items() if v["org"] == org]
 
 
 def report_invalid_target(target) -> str:
@@ -293,7 +283,7 @@ def _summarise(header_text: str, locations: list[str], skip_successful: bool) ->
 
 def summarise_team(team: str, skip_successful: bool) -> list:
     header = f"Workflows for {team}"
-    locations = get_locations_for_team(team)
+    locations = config.get_locations_for_team(team)
     return _summarise(header, locations, skip_successful)
 
 
@@ -311,7 +301,7 @@ def summarise_all(skip_successful) -> list:
 
 def summarise_org(org, skip_successful) -> list:
     header_text = f"Workflows for {org} repos"
-    locations = get_locations_for_org(org)
+    locations = config.get_locations_for_org(org)
     blocks = _summarise(header_text, locations, skip_successful)
     return blocks
 
