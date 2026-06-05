@@ -413,6 +413,92 @@ raw_config = {
             },
         ]
     },
+    "security": {
+        "restricted": True,
+        "description": "Report open critical/high severity Dependabot alerts",
+        "jobs": {
+            "display_usage": {
+                "run_args_template": "python jobs.py usage",
+                "report_stdout": True,
+            },
+            "report": {
+                "run_args_template": "python jobs.py report --target {target}",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "report_all_targets": {
+                "run_args_template": "python jobs.py report",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "check": {
+                "run_args_template": "python jobs.py report --target {target} --quiet",
+                "report_stdout": True,
+                "report_format": "blocks",
+                "suppress_empty": True,
+            },
+            "check_all_targets": {
+                "run_args_template": "python jobs.py report --quiet",
+                "report_stdout": True,
+                "report_format": "blocks",
+                "suppress_empty": True,
+            },
+            "report_all_severities": {
+                "run_args_template": "python jobs.py report --target {target} --all-severities",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "report_all_severities_all_targets": {
+                "run_args_template": "python jobs.py report --all-severities",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+        },
+        "slack": [
+            {
+                "command": "usage",
+                "help": "Show help message for the `report` and `check` commands.",
+                "action": "schedule_job",
+                "job_type": "display_usage",
+            },
+            {
+                "command": "report",
+                "help": "Report on open critical/high security alerts for all monitored repos, by team.",
+                "action": "schedule_job",
+                "job_type": "report_all_targets",
+            },
+            {
+                "command": "report [target]",
+                "help": "Report on open critical/high security alerts for `target` (team, org, or repo). See `security usage` for valid values.",
+                "action": "schedule_job",
+                "job_type": "report",
+            },
+            {
+                "command": "check",
+                "help": "Like `report`, but does not post anything if there are no alerts to report.",
+                "action": "schedule_job",
+                "job_type": "check_all_targets",
+            },
+            {
+                "command": "check [target]",
+                "help": "Like `report [target]`, but does not post anything if there are no alerts to report.",
+                "action": "schedule_job",
+                "job_type": "check",
+            },
+            {
+                "command": "report-all",
+                "help": "Like `report`, but also reports on alerts for all levels of severity.",
+                "action": "schedule_job",
+                "job_type": "report_all_severities_all_targets",
+            },
+            {
+                "command": "report-all [target]",
+                "help": "Like `report [target]`, but reports on alerts for all levels of severity.",
+                "action": "schedule_job",
+                "job_type": "report_all_severities",
+            },
+        ]
+    },
     "techsupport": {
         "restricted": True,
         "description": "Tech Support out of office and rota",
