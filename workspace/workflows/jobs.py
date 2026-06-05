@@ -4,8 +4,6 @@ import os
 from datetime import datetime
 from urllib.parse import urljoin
 
-import requests
-
 from bennettbot import settings
 from workspace.utils import repos_config as config
 from workspace.utils import shorthands
@@ -15,10 +13,12 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
+from workspace.utils.github_rest_api import GitHubAPIClient
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
-TOKEN = os.environ["DATA_TEAM_GITHUB_API_TOKEN"]  # requires "read:project" and "repo"
+# Requires `repo` scope for Actions workflows/runs on private repos.
+github_client = GitHubAPIClient(os.environ["DATA_TEAM_GITHUB_API_TOKEN"])
 EMOJI = {
     "success": ":large_green_circle:",
     "running": ":large_yellow_circle:",
@@ -50,15 +50,6 @@ def report_invalid_list_of_targets() -> str:
         ],
     )
     return json.dumps(blocks)
-
-
-def get_api_result_as_json(url: str, params: dict | None = None) -> dict:
-    params = params or {}
-    params["format"] = "json"
-    headers = {"Authorization": f"Bearer {TOKEN}"}
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
 
 
 def load_cache() -> dict:
@@ -112,7 +103,7 @@ class RepoWorkflowReporter:
 
     def _get_json_response(self, path, params=None):
         url = urljoin(self.base_api_url, path)
-        return get_api_result_as_json(url, params)
+        return github_client.get_json(url, params)
 
     def get_workflows(self) -> dict:
         results = self._get_json_response("actions/workflows")["workflows"]

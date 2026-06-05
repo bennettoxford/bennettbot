@@ -15,7 +15,6 @@ import datetime
 import json
 import os
 
-import requests
 from slack_sdk.models.blocks import (
     HeaderBlock,
     RichTextBlock,
@@ -23,6 +22,8 @@ from slack_sdk.models.blocks import (
     RichTextListElement,
     RichTextSectionElement,
 )
+
+from workspace.utils.github_rest_api import GitHubAPIClient
 
 
 CODE = RichTextElementParts.TextStyle(code=True)
@@ -33,17 +34,15 @@ Emoji = RichTextElementParts.Emoji
 
 
 URL_PATTERN = "https://api.github.com/orgs/{org}/codespaces"
-# The following can be a classic PAT with the admin:org scope or a fine-grained token
-# with "Codespaces" repository permissions set to "read" and "Organization codespaces"
-# organization permissions set to "read". For more information, see:
+# The token can be a classic PAT with the admin:org scope or a fine-grained
+# token with "Codespaces" repository permissions set to "read" and
+# "Organization codespaces" organization permissions set to "read".
 # https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2022-11-28#list-codespaces-for-the-organization
-# Someone with admin permissions on the organization needs to do this.
+# Someone with admin permissions on the organization needs to create it.
 # For the opensafely org, created PATs should be stored in BitWarden.
-TOKEN = os.environ["CODESPACES_GITHUB_API_TOKEN"]
-HEADERS = {
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-}
+github_client = GitHubAPIClient(
+    os.environ["CODESPACES_GITHUB_API_TOKEN"], api_version="2022-11-28"
+)
 
 
 Codespace = collections.namedtuple(
@@ -59,26 +58,6 @@ Codespace = collections.namedtuple(
         "has_unpushed",
     ],
 )
-
-
-def fetch(url, key):
-    """
-    Recursively fetch all records from the GitHub REST API endpoint given by `url`.
-    `key` is the property under which the records are stored.
-    """
-
-    def set_bearer_auth(request):
-        request.headers["Authorization"] = f"Bearer {TOKEN}"
-        return request
-
-    def fetch_one_page(page_url):
-        response = requests.get(page_url, auth=set_bearer_auth, headers=HEADERS)
-        response.raise_for_status()
-        yield from response.json().get(key)
-        if "next" in response.links:
-            yield from fetch_one_page(response.links["next"]["url"])
-
-    yield from fetch_one_page(url)
 
 
 def get_codespace(record):
@@ -143,7 +122,9 @@ def main(threshold_in_days):
     ]
 
     # Fetch info on org CodeSpaces at risk from GitHub API.
-    records = fetch(URL_PATTERN.format(org=org), "codespaces")
+    records = github_client.get_paginated_json(
+        URL_PATTERN.format(org=org), results_key="codespaces"
+    )
     codespaces = (get_codespace(rec) for rec in records)
     at_risk_codespaces = sorted(
         (

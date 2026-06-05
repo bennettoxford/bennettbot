@@ -80,7 +80,7 @@ def mock_airlock_reporter():
     # Workflow IDs and names
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         body=Path("tests/workspace/workflows.json").read_text(),
         match_querystring=True,
     )
@@ -88,7 +88,7 @@ def mock_airlock_reporter():
     # Workflow runs
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/runs?per_page=100&format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/runs?per_page=100",
         body=Path("tests/workspace/runs.json").read_text(),
         match_querystring=False,  # Test the querystring separately
     )
@@ -367,7 +367,7 @@ def test_get_workflows():
     # get_workflows is called in __init__, so create the instance here
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         match_querystring=True,
         body=Path("tests/workspace/workflows.json").read_text(),
     )
@@ -445,7 +445,6 @@ def test_get_runs_since_last_retrieval(mock_airlock_reporter, cache_path):
     assert Mocket.last_request().querystring == {
         "branch": ["main"],
         "per_page": ["100"],
-        "format": ["json"],
         "created": [f">={THIS_YEAR}-01-15T09:00:08Z"],
     }
 
@@ -620,7 +619,7 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji):
     # No need to mock CACHE_PATH since get_latest_conclusions is mocked
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         match_querystring=True,
         body=Path("tests/workspace/workflows.json").read_text(),
     )
