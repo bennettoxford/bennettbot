@@ -43,7 +43,20 @@ def test_schedule_job_with_no_jobs_of_same_type_already_scheduled():
     assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel", T(0), None)
 
 
-def test_schedule_job_with_job_of_same_type_scheduled():
+def test_schedule_job_with_same_type_and_args_scheduled_overwrites():
+    assert_no_running_job(
+        scheduler.schedule_job("good_job", {"k": "v"}, "channel", TS, 0)
+    )
+    assert_no_running_job(
+        scheduler.schedule_job("good_job", {"k": "v"}, "channel1", TS, 10)
+    )
+
+    jj = scheduler.get_jobs_of_type("good_job")
+    assert len(jj) == 1
+    assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel1", T(10), None)
+
+
+def test_schedule_job_with_same_type_different_args_scheduled_coexists():
     assert_no_running_job(
         scheduler.schedule_job("good_job", {"k": "v"}, "channel", TS, 0)
     )
@@ -52,8 +65,22 @@ def test_schedule_job_with_job_of_same_type_scheduled():
     )
 
     jj = scheduler.get_jobs_of_type("good_job")
+    assert len(jj) == 2
+    assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel", T(0), None)
+    assert_job_matches(jj[1], "good_job", {"k": "w"}, "channel1", T(10), None)
+
+
+def test_schedule_job_args_match_ignores_dict_key_order():
+    assert_no_running_job(
+        scheduler.schedule_job("good_job", {"a": 1, "b": 2}, "channel", TS, 0)
+    )
+    assert_no_running_job(
+        scheduler.schedule_job("good_job", {"b": 2, "a": 1}, "channel1", TS, 10)
+    )
+
+    jj = scheduler.get_jobs_of_type("good_job")
     assert len(jj) == 1
-    assert_job_matches(jj[0], "good_job", {"k": "w"}, "channel1", T(10), None)
+    assert_job_matches(jj[0], "good_job", {"a": 1, "b": 2}, "channel1", T(10), None)
 
 
 def test_schedule_job_with_job_of_same_type_running(freezer):
@@ -101,9 +128,44 @@ def test_schedule_job_with_job_of_same_type_running_and_another_scheduled(freeze
         scheduler.schedule_job("good_job", ["args2"], "channel2", TS, 15)
     )
     jj = scheduler.get_jobs_of_type("good_job")
+    assert len(jj) == 3
+    assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel", T(0), T(5))
+    assert_job_matches(jj[1], "good_job", {"k": "w"}, "channel1", T(10), None)
+    assert_job_matches(jj[2], "good_job", ["args2"], "channel2", T(20), None)
+
+
+def test_schedule_job_with_running_and_pending_same_args_updates_pending(freezer):
+    scheduler.schedule_job("good_job", {"k": "v"}, "channel", TS, 0)
+    freezer.move_to(T(5))
+    scheduler.reserve_job()
+    assert_running_job(
+        scheduler.schedule_job("good_job", {"k": "w"}, "channel1", TS, 5)
+    )
+
+    assert_running_job(
+        scheduler.schedule_job("good_job", {"k": "w"}, "channel2", TS, 15)
+    )
+    jj = scheduler.get_jobs_of_type("good_job")
     assert len(jj) == 2
     assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel", T(0), T(5))
-    assert_job_matches(jj[1], "good_job", ["args2"], "channel2", T(20), None)
+    assert_job_matches(jj[1], "good_job", {"k": "w"}, "channel2", T(20), None)
+
+
+def test_schedule_job_with_same_args_running_and_pending_updates_pending(freezer):
+    scheduler.schedule_job("good_job", {"k": "v"}, "channel", TS, 0)
+    freezer.move_to(T(5))
+    scheduler.reserve_job()
+    assert_running_job(
+        scheduler.schedule_job("good_job", {"k": "v"}, "channel1", TS, 5)
+    )
+
+    assert_running_job(
+        scheduler.schedule_job("good_job", {"k": "v"}, "channel2", TS, 15)
+    )
+    jj = scheduler.get_jobs_of_type("good_job")
+    assert len(jj) == 2
+    assert_job_matches(jj[0], "good_job", {"k": "v"}, "channel", T(0), T(5))
+    assert_job_matches(jj[1], "good_job", {"k": "v"}, "channel2", T(20), None)
 
 
 def test_cancel_job_with_no_jobs_of_same_type_scheduled():

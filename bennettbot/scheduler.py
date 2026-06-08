@@ -12,11 +12,14 @@ def schedule_job(
 ):
     """Schedule job to be run.
 
-    Only one job of any type may be scheduled.  If a job is already scheduled
-    but isn't running yet and another job of the same type is scheduled, the
-    record of the first job is updated.
+    Only one job with a given (type, args) combination may be scheduled.  If
+    a matching job is already scheduled but isn't running yet and another job
+    with the same (type, args) is scheduled, the record of the first job is
+    updated.
 
-    If a job is already running, another job of that type may be scheduled.
+    Jobs with the same type but different args are treated as independent and
+    coexist in the queue.  The dispatcher still only runs one job per type at
+    a time (see reserve_job), so they execute serially.
 
     `message_ts` is the timestamp of the Slack message that triggered the job,
     so the dispatcher can react to it on completion. May be None for
@@ -25,28 +28,27 @@ def schedule_job(
     Returns a boolean indicating whether an existing job was already running.
     """
 
+    start_after = _now() + timedelta(seconds=delay_seconds)
+    args = json.dumps(args, sort_keys=True)
+
     sql = """
-    SELECT id, started_at IS NOT NULL AS has_started
+    SELECT id, args, started_at IS NOT NULL AS has_started
     FROM job
     WHERE type = ?
     ORDER BY has_started
     """
 
-    start_after = _now() + timedelta(seconds=delay_seconds)
-    args = json.dumps(args)
-
     with closing(get_connection()) as conn:
         with conn:
-            existing_jobs = list(conn.execute(sql, [type_]))
-        existing_job_running = False
-        if len(existing_jobs) == 0:
-            _create_job(
-                conn, type_, args, channel, thread_ts, message_ts, start_after, is_im
-            )
-        elif len(existing_jobs) == 1:
-            job = existing_jobs[0]
-            if job["has_started"]:
-                existing_job_running = True
+            same_type_jobs = list(conn.execute(sql, [type_]))
+
+        # Do we have a running job of the same type (irrespective of args)?
+        existing_job_type_running = any(j["has_started"] for j in same_type_jobs)
+        # Find matching jobs including args
+        matching_jobs = [j for j in same_type_jobs if j["args"] == args]
+
+        match len(matching_jobs):
+            case 0:
                 _create_job(
                     conn,
                     type_,
@@ -57,21 +59,48 @@ def schedule_job(
                     start_after,
                     is_im,
                 )
-            else:
-                id_ = job["id"]
+            case 1:
+                job = matching_jobs[0]
+                if job["has_started"]:
+                    _create_job(
+                        conn,
+                        type_,
+                        args,
+                        channel,
+                        thread_ts,
+                        message_ts,
+                        start_after,
+                        is_im,
+                    )
+                else:
+                    _update_job(
+                        conn,
+                        job["id"],
+                        args,
+                        channel,
+                        thread_ts,
+                        message_ts,
+                        start_after,
+                    )
+            case 2:
+                # We order by has_started ASC, and we can only have one matching job running
+                # Update the not-running job (always the first one) with the current requested job
+                # sanity check
+                assert not matching_jobs[0]["has_started"]
+                assert matching_jobs[1]["has_started"]
                 _update_job(
-                    conn, id_, args, channel, thread_ts, message_ts, start_after
+                    conn,
+                    matching_jobs[0]["id"],
+                    args,
+                    channel,
+                    thread_ts,
+                    message_ts,
+                    start_after,
                 )
-        elif len(existing_jobs) == 2:
-            assert not existing_jobs[0]["has_started"]
-            assert existing_jobs[1]["has_started"]
-            existing_job_running = True
-            id_ = existing_jobs[0]["id"]
-            _update_job(conn, id_, args, channel, thread_ts, message_ts, start_after)
-        else:
-            assert False
+            case _:  # pragma: no cover
+                assert False
 
-    return existing_job_running
+    return existing_job_type_running
 
 
 def _create_job(conn, type_, args, channel, thread_ts, message_ts, start_after, is_im):

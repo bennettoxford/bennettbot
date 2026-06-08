@@ -63,6 +63,26 @@ to OpenPrescribing jobs. New jobs will likely only require `"schedule_job"` slac
 commands.
 
 
+## Scheduling behaviour
+
+- `schedule_job` deduplicates on **both** `job_type` and `args`. Scheduling
+  the same `(job_type, args)` again while a matching job is still pending
+  updates that pending job (channel, thread, start time). Scheduling the same
+  `job_type` with **different** args queues a separate, independent job — so
+  e.g. `workflows show osc` and `workflows show osc/airlock` coexist rather
+  than one cancelling the other.
+- The dispatcher only runs one job per `job_type` at a time, regardless of
+  args. Pending jobs of the same type with different args therefore run
+  serially in queue order.
+- `cancel_job` removes **all** pending jobs of a given `job_type`, regardless
+  of args.
+- Suppressions (`schedule_suppression` / `cancel_suppression`) operate on
+  `job_type` only and are unrelated to the args-aware queueing above.
+- As noted in the section above, the `cancel_job`, `schedule_suppression`
+  and `cancel_suppression` actions are currently only used by OpenPrescribing
+  (`op`) jobs — new jobs typically only need `schedule_job`.
+
+
 ## Example job config
 
 ### Simple bash command
