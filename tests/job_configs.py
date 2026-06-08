@@ -64,6 +64,11 @@ raw_config = {
                 "run_args_template": "python jobs.py hello_world_no_output",
                 "report_stdout": True,
             },
+            "python_job_no_output_suppress": {
+                "run_args_template": "python jobs.py hello_world_no_output",
+                "report_stdout": True,
+                "suppress_empty": True,
+            },
             "python_job_long_code_output": {
                 "run_args_template": "python jobs.py long_code_output",
                 "report_format": "code",

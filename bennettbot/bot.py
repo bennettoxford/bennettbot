@@ -536,6 +536,7 @@ def handle_schedule_job(message, say, slack_config, is_im=False):
         thread_ts=message.get("thread_ts"),
         delay_seconds=slack_config["delay_seconds"],
         is_im=is_im,
+        message_ts=message.get("ts"),
     )
     if existing_job_is_running:
         say(

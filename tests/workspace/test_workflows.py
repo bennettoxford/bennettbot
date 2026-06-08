@@ -80,7 +80,7 @@ def mock_airlock_reporter():
     # Workflow IDs and names
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         body=Path("tests/workspace/workflows.json").read_text(),
         match_querystring=True,
     )
@@ -88,7 +88,7 @@ def mock_airlock_reporter():
     # Workflow runs
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/runs?per_page=100&format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/runs?per_page=100",
         body=Path("tests/workspace/runs.json").read_text(),
         match_querystring=False,  # Test the querystring separately
     )
@@ -135,7 +135,7 @@ def use_mock_results(patch_settings):
             }
             # Patch the config and use results from the mock cache
             with (
-                patch("workspace.workflows.config.REPOS", mock_repos_config),
+                patch("workspace.utils.repos_config.REPOS", mock_repos_config),
                 patch("workspace.workflows.jobs.load_cache", return_value=mock_cache),
                 patch(
                     "workspace.workflows.jobs.RepoWorkflowReporter",
@@ -367,7 +367,7 @@ def test_get_workflows():
     # get_workflows is called in __init__, so create the instance here
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         match_querystring=True,
         body=Path("tests/workspace/workflows.json").read_text(),
     )
@@ -445,7 +445,6 @@ def test_get_runs_since_last_retrieval(mock_airlock_reporter, cache_path):
     assert Mocket.last_request().querystring == {
         "branch": ["main"],
         "per_page": ["100"],
-        "format": ["json"],
         "created": [f">={THIS_YEAR}-01-15T09:00:08Z"],
     }
 
@@ -620,7 +619,7 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji):
     # No need to mock CACHE_PATH since get_latest_conclusions is mocked
     Entry.single_register(
         Entry.GET,
-        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows?format=json",
+        "https://api.github.com/repos/opensafely-core/airlock/actions/workflows",
         match_querystring=True,
         body=Path("tests/workspace/workflows.json").read_text(),
     )
@@ -812,7 +811,7 @@ def test_main_show_all():
 
 
 @patch(
-    "workspace.workflows.config.WORKFLOWS_KNOWN_TO_FAIL",
+    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
     {
         "opensafely/failing-repo": [82728346, 88048829, 94331150, 108457763, 113602598],
     },
@@ -908,7 +907,7 @@ def test_main_show_failed_found():
 
 
 @patch(
-    "workspace.workflows.config.WORKFLOWS_KNOWN_TO_FAIL",
+    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
     {
         # Second-last workflow is known to fail
         "opensafely-core/airlock": [108457763],
@@ -998,7 +997,7 @@ def test_main_show_invalid_target():
 
 
 @patch(
-    "workspace.workflows.config.CUSTOM_WORKFLOWS_GROUPS",
+    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
     {
         "check-links": {
             "header_text": "Link-checking workflows",
@@ -1068,7 +1067,7 @@ def test_show_group():
 
 
 @patch(
-    "workspace.workflows.config.CUSTOM_WORKFLOWS_GROUPS",
+    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
     {"check-links": ...},
 )
 def test_show_group_not_found():

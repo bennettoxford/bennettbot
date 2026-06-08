@@ -4,9 +4,8 @@ import os
 from datetime import datetime
 from urllib.parse import urljoin
 
-import requests
-
 from bennettbot import settings
+from workspace.utils import repos_config as config
 from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
@@ -14,11 +13,12 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
-from workspace.workflows import config
+from workspace.utils.github_rest_api import GitHubAPIClient
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
-TOKEN = os.environ["DATA_TEAM_GITHUB_API_TOKEN"]  # requires "read:project" and "repo"
+# Requires `repo` scope for Actions workflows/runs on private repos.
+github_client = GitHubAPIClient(os.environ["DATA_TEAM_GITHUB_API_TOKEN"])
 EMOJI = {
     "success": ":large_green_circle:",
     "running": ":large_yellow_circle:",
@@ -32,16 +32,6 @@ EMOJI = {
 
 def get_emoji(conclusion) -> str:
     return EMOJI.get(conclusion, EMOJI["other"])
-
-
-def get_locations_for_team(team: str) -> list[str]:
-    return [
-        f"{v['org']}/{repo}" for repo, v in config.REPOS.items() if v["team"] == team
-    ]
-
-
-def get_locations_for_org(org: str) -> list[str]:
-    return [f"{org}/{repo}" for repo, v in config.REPOS.items() if v["org"] == org]
 
 
 def report_invalid_target(target) -> str:
@@ -62,27 +52,18 @@ def report_invalid_list_of_targets() -> str:
     return json.dumps(blocks)
 
 
-def get_api_result_as_json(url: str, params: dict | None = None) -> dict:
-    params = params or {}
-    params["format"] = "json"
-    headers = {"Authorization": f"Bearer {TOKEN}"}
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
 def load_cache() -> dict:
     if not CACHE_PATH.exists():
         return {}
     return json.loads(CACHE_PATH.read_text())
 
 
-def get_github_actions_link(location):
-    return f"https://github.com/{location}/actions?query=branch%3Amain"
+def get_github_actions_link(repo_full_name):
+    return f"https://github.com/{repo_full_name}/actions?query=branch%3Amain"
 
 
 class RepoWorkflowReporter:
-    def __init__(self, location):
+    def __init__(self, repo_full_name):
         """
         Retrieves and reports on the status of workflow runs on the main branch in a specified repo.
         Workflows that are not on the main branch are skipped.
@@ -96,12 +77,12 @@ class RepoWorkflowReporter:
         Functions outside of this class are used to generate summary reports from the conclusions returned from get_latest_conclusions() or loaded from the cache file.
 
         Parameters:
-            location: str
-                The location of the repo in the format "org/repo" (e.g. "opensafely/documentation")
+            repo_full_name: str
+                The full name of the repo in the format "org/repo" (e.g. "opensafely/documentation")
         """
-        self.location = location
-        self.base_api_url = f"https://api.github.com/repos/{self.location}/"
-        self.github_actions_link = get_github_actions_link(self.location)
+        self.repo_full_name = repo_full_name
+        self.base_api_url = f"https://api.github.com/repos/{self.repo_full_name}/"
+        self.github_actions_link = get_github_actions_link(self.repo_full_name)
 
         self.workflows = self.get_workflows()  # Dict of workflow_id: workflow_name
         self.workflow_ids = set(self.workflows.keys())
@@ -110,7 +91,7 @@ class RepoWorkflowReporter:
         self.cache = self._load_cache_for_repo()
 
     def _load_cache_for_repo(self) -> dict:
-        cache = load_cache().get(self.location, {})
+        cache = load_cache().get(self.repo_full_name, {})
         if cache.get("version") != self.cache_version:
             return {}
         return cache
@@ -122,7 +103,7 @@ class RepoWorkflowReporter:
 
     def _get_json_response(self, path, params=None):
         url = urljoin(self.base_api_url, path)
-        return get_api_result_as_json(url, params)
+        return github_client.get_json(url, params)
 
     def get_workflows(self) -> dict:
         results = self._get_json_response("actions/workflows")["workflows"]
@@ -131,7 +112,7 @@ class RepoWorkflowReporter:
         return workflows
 
     def remove_ignored_workflows(self, workflows):
-        skipped = config.IGNORED_WORKFLOWS.get(self.location, [])
+        skipped = config.IGNORED_WORKFLOWS.get(self.repo_full_name, [])
         for workflow_id in skipped:
             workflows.pop(workflow_id, None)
 
@@ -198,7 +179,7 @@ class RepoWorkflowReporter:
 
     def write_cache_to_file(self):
         cache_file_contents = load_cache()
-        cache_file_contents[self.location] = self.cache
+        cache_file_contents[self.repo_full_name] = self.cache
         with open(CACHE_PATH, "w") as f:
             f.write(json.dumps(cache_file_contents))
 
@@ -214,7 +195,7 @@ class RepoWorkflowReporter:
         conclusions = self.get_latest_conclusions()
         lines = [format_text(wf, conclusion) for wf, conclusion in conclusions.items()]
         blocks = [
-            get_header_block(f"Workflows for {self.location}"),
+            get_header_block(f"Workflows for {self.repo_full_name}"),
             get_text_block("\n".join(lines)),  # Show in one block for compactness
             get_text_block(f"<{self.github_actions_link}|View Github Actions>"),
         ]
@@ -241,28 +222,30 @@ def _format_run_url(run_url, link_text):
     return link_text
 
 
-def get_summary_block(location: str, conclusions: list) -> str:
-    link = get_github_actions_link(location)
+def get_summary_block(repo_full_name: str, conclusions: list) -> str:
+    link = get_github_actions_link(repo_full_name)
     emojis = "".join(
         [
             _format_run_url(run_url, get_emoji(conclusion_name))
             for conclusion_name, run_url in conclusions
         ]
     )
-    return get_text_block(f"<{link}|{location}>: {emojis}")
+    return get_text_block(f"<{link}|{repo_full_name}>: {emojis}")
 
 
 def get_success_rate(conclusions) -> float:
     return conclusions.count("success") / len(conclusions)
 
 
-def _summarise(header_text: str, locations: list[str], skip_successful: bool) -> list:
+def _summarise(
+    header_text: str, repo_full_names: list[str], skip_successful: bool
+) -> list:
     unsorted = {}
-    for location in locations:
-        wf_conclusions = RepoWorkflowReporter(location).get_latest_conclusions()
+    for repo_full_name in repo_full_names:
+        wf_conclusions = RepoWorkflowReporter(repo_full_name).get_latest_conclusions()
 
         # Skip reporting missing workflows and failures that are already known
-        known_failure_ids = config.WORKFLOWS_KNOWN_TO_FAIL.get(location, [])
+        known_failure_ids = config.WORKFLOWS_KNOWN_TO_FAIL.get(repo_full_name, [])
         wf_conclusions = {
             k: v
             for k, v in wf_conclusions.items()
@@ -280,21 +263,24 @@ def _summarise(header_text: str, locations: list[str], skip_successful: bool) ->
             == 1
         ):
             continue
-        unsorted[location] = list(wf_conclusions.values())
+        unsorted[repo_full_name] = list(wf_conclusions.values())
 
     key = lambda item: get_success_rate(item[1][0])
     conclusions = sorted(unsorted.items(), key=key)
     blocks = [
         get_header_block(header_text),
-        *[get_summary_block(loc, conc) for loc, conc in conclusions],
+        *[
+            get_summary_block(repo_full_name, conc)
+            for repo_full_name, conc in conclusions
+        ],
     ]
     return blocks
 
 
 def summarise_team(team: str, skip_successful: bool) -> list:
     header = f"Workflows for {team}"
-    locations = get_locations_for_team(team)
-    return _summarise(header, locations, skip_successful)
+    repo_full_names = config.get_repo_full_names_for_team(team)
+    return _summarise(header, repo_full_names, skip_successful)
 
 
 def summarise_all(skip_successful) -> list:
@@ -311,8 +297,8 @@ def summarise_all(skip_successful) -> list:
 
 def summarise_org(org, skip_successful) -> list:
     header_text = f"Workflows for {org} repos"
-    locations = get_locations_for_org(org)
-    blocks = _summarise(header_text, locations, skip_successful)
+    repo_full_names = config.get_repo_full_names_for_org(org)
+    blocks = _summarise(header_text, repo_full_names, skip_successful)
     return blocks
 
 
@@ -329,16 +315,16 @@ def summarise_workflows_group(group: str, skip_successful: bool) -> list:
         )
 
     conclusions = {}
-    for location, workflow_ids in group_config["workflows"].items():
-        wf_conclusions = RepoWorkflowReporter(location).get_latest_conclusions()
-        conclusions[location] = [
+    for repo_full_name, workflow_ids in group_config["workflows"].items():
+        wf_conclusions = RepoWorkflowReporter(repo_full_name).get_latest_conclusions()
+        conclusions[repo_full_name] = [
             wf_conclusions.get(wf_id, "missing") for wf_id in workflow_ids
         ]
     blocks = [
         get_header_block(group_config["header_text"]),
         *[
-            get_summary_block(loc, conc)
-            for loc, conc in conclusions.items()
+            get_summary_block(repo_full_name, conc)
+            for repo_full_name, conc in conclusions.items()
             if not (skip_successful and get_success_rate(conc) == 1)
         ],
     ]
@@ -380,10 +366,11 @@ def _main(targets: list[str], skip_successful: bool) -> str:
 
     # Validation
     orgs = []
-    locations = []
+    repo_full_names = []
     for target in targets:
-        # Some repos are names of websites and slack prepends http:// to them
-        target = target.replace("http://", "")
+        # Some repos are names of websites and Slack auto-linkifies them by prepending
+        # http:// (or https:// for some domains)
+        target = target.removeprefix("http://").removeprefix("https://")
         if target.count("/") > 1:
             return report_invalid_target(target)
 
@@ -398,25 +385,27 @@ def _main(targets: list[str], skip_successful: bool) -> str:
         if org not in shorthands.ORGS.values():
             return report_invalid_target(target)
         if repo:
-            locations.append(f"{org}/{repo}")
+            repo_full_names.append(f"{org}/{repo}")
         else:
             orgs.append(org)
 
-    if orgs and not locations:  # Summarise the org(s)
+    if orgs and not repo_full_names:  # Summarise the org(s)
         blocks = []
         for org in orgs:
             blocks.extend(summarise_org(org, skip_successful))
         return json.dumps(blocks)
 
-    elif len(locations) != len(targets):
+    elif len(repo_full_names) != len(targets):
         return report_invalid_list_of_targets()
 
-    elif len(locations) == 1:
+    elif len(repo_full_names) == 1:
         # Single repo usage: Report status for all workflows in a specified repo
-        return RepoWorkflowReporter(locations[0]).report()
+        return RepoWorkflowReporter(repo_full_names[0]).report()
 
     else:  # Summarise the list of repos requested
-        return json.dumps(_summarise("Workflows summary", locations, skip_successful))
+        return json.dumps(
+            _summarise("Workflows summary", repo_full_names, skip_successful)
+        )
 
 
 def get_text_blocks_for_key(args) -> str:

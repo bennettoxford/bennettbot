@@ -172,3 +172,11 @@ CUSTOM_WORKFLOWS_GROUPS = {
         },
     }
 }
+
+
+def get_repo_full_names_for_team(team: str) -> list[str]:
+    return [f"{v['org']}/{repo}" for repo, v in REPOS.items() if v["team"] == team]
+
+
+def get_repo_full_names_for_org(org: str) -> list[str]:
+    return [f"{org}/{repo}" for repo, v in REPOS.items() if v["org"] == org]

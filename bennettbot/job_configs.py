@@ -413,6 +413,92 @@ raw_config = {
             },
         ]
     },
+    "security": {
+        "restricted": True,
+        "description": "Report open critical/high severity Dependabot alerts",
+        "jobs": {
+            "display_usage": {
+                "run_args_template": "python jobs.py usage",
+                "report_stdout": True,
+            },
+            "report": {
+                "run_args_template": "python jobs.py report --target {target}",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "report_all_targets": {
+                "run_args_template": "python jobs.py report",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "check": {
+                "run_args_template": "python jobs.py report --target {target} --quiet",
+                "report_stdout": True,
+                "report_format": "blocks",
+                "suppress_empty": True,
+            },
+            "check_all_targets": {
+                "run_args_template": "python jobs.py report --quiet",
+                "report_stdout": True,
+                "report_format": "blocks",
+                "suppress_empty": True,
+            },
+            "report_all_severities": {
+                "run_args_template": "python jobs.py report --target {target} --all-severities",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "report_all_severities_all_targets": {
+                "run_args_template": "python jobs.py report --all-severities",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+        },
+        "slack": [
+            {
+                "command": "usage",
+                "help": "Show help message for the `report` and `check` commands.",
+                "action": "schedule_job",
+                "job_type": "display_usage",
+            },
+            {
+                "command": "report",
+                "help": "Report on open critical/high security alerts for all monitored repos, by team.",
+                "action": "schedule_job",
+                "job_type": "report_all_targets",
+            },
+            {
+                "command": "report [target]",
+                "help": "Report on open critical/high security alerts for `target` (team, org, or repo). See `security usage` for valid values.",
+                "action": "schedule_job",
+                "job_type": "report",
+            },
+            {
+                "command": "check",
+                "help": "Like `report`, but does not post anything if there are no alerts to report.",
+                "action": "schedule_job",
+                "job_type": "check_all_targets",
+            },
+            {
+                "command": "check [target]",
+                "help": "Like `report [target]`, but does not post anything if there are no alerts to report.",
+                "action": "schedule_job",
+                "job_type": "check",
+            },
+            {
+                "command": "report-all",
+                "help": "Like `report`, but also reports on alerts for all levels of severity.",
+                "action": "schedule_job",
+                "job_type": "report_all_severities_all_targets",
+            },
+            {
+                "command": "report-all [target]",
+                "help": "Like `report [target]`, but reports on alerts for all levels of severity.",
+                "action": "schedule_job",
+                "job_type": "report_all_severities",
+            },
+        ]
+    },
     "techsupport": {
         "restricted": True,
         "description": "Tech Support out of office and rota",
@@ -702,19 +788,24 @@ def get_template_params(command, wrapper="[]"):
 def validate_job_config(job_type, job_config):
     """Validate that job_config contains expected keys."""
 
-    expected_keys = {
+    # Required keys are defaulted in build_config() above, so every
+    # built job_config dict ends up with all of them. Optional keys are
+    # left absent unless the job explicitly opts in - they don't appear
+    # in the built config dict otherwise, keeping it tidy.
+    required_keys = {
         "run_args_template",
         "report_stdout",
         "report_format",
         "report_success",
         "call_tech_support_on_error",
     }
+    optional_keys = {"suppress_empty"}
 
-    if missing_keys := (expected_keys - job_config.keys()):
+    if missing_keys := (required_keys - job_config.keys()):
         msg = f"Job {job_type} is missing keys {missing_keys}"
         raise RuntimeError(msg)
 
-    if extra_keys := (job_config.keys() - expected_keys):
+    if extra_keys := (job_config.keys() - required_keys - optional_keys):
         msg = f"Job {job_type} has extra keys {extra_keys}"
         raise RuntimeError(msg)
 

@@ -7,7 +7,9 @@ from .logger import log_call
 
 
 @log_call
-def schedule_job(type_, args, channel, thread_ts, delay_seconds, is_im=False):
+def schedule_job(
+    type_, args, channel, thread_ts, delay_seconds, is_im=False, message_ts=None
+):
     """Schedule job to be run.
 
     Only one job of any type may be scheduled.  If a job is already scheduled
@@ -15,6 +17,10 @@ def schedule_job(type_, args, channel, thread_ts, delay_seconds, is_im=False):
     record of the first job is updated.
 
     If a job is already running, another job of that type may be scheduled.
+
+    `message_ts` is the timestamp of the Slack message that triggered the job,
+    so the dispatcher can react to it on completion. May be None for
+    automated/scheduled jobs that have no originating message.
 
     Returns a boolean indicating whether an existing job was already running.
     """
@@ -34,40 +40,53 @@ def schedule_job(type_, args, channel, thread_ts, delay_seconds, is_im=False):
             existing_jobs = list(conn.execute(sql, [type_]))
         existing_job_running = False
         if len(existing_jobs) == 0:
-            _create_job(conn, type_, args, channel, thread_ts, start_after, is_im)
+            _create_job(
+                conn, type_, args, channel, thread_ts, message_ts, start_after, is_im
+            )
         elif len(existing_jobs) == 1:
             job = existing_jobs[0]
             if job["has_started"]:
                 existing_job_running = True
-                _create_job(conn, type_, args, channel, thread_ts, start_after, is_im)
+                _create_job(
+                    conn,
+                    type_,
+                    args,
+                    channel,
+                    thread_ts,
+                    message_ts,
+                    start_after,
+                    is_im,
+                )
             else:
                 id_ = job["id"]
-                _update_job(conn, id_, args, channel, thread_ts, start_after)
+                _update_job(
+                    conn, id_, args, channel, thread_ts, message_ts, start_after
+                )
         elif len(existing_jobs) == 2:
             assert not existing_jobs[0]["has_started"]
             assert existing_jobs[1]["has_started"]
             existing_job_running = True
             id_ = existing_jobs[0]["id"]
-            _update_job(conn, id_, args, channel, thread_ts, start_after)
+            _update_job(conn, id_, args, channel, thread_ts, message_ts, start_after)
         else:
             assert False
 
     return existing_job_running
 
 
-def _create_job(conn, type_, args, channel, thread_ts, start_after, is_im):
+def _create_job(conn, type_, args, channel, thread_ts, message_ts, start_after, is_im):
     with conn:
         conn.execute(
-            "INSERT INTO job (type, args, channel, thread_ts, start_after, is_im) VALUES (?, ?, ?, ?, ?, ?)",
-            [type_, args, channel, thread_ts, start_after, is_im],
+            "INSERT INTO job (type, args, channel, thread_ts, message_ts, start_after, is_im) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [type_, args, channel, thread_ts, message_ts, start_after, is_im],
         )
 
 
-def _update_job(conn, id_, args, channel, thread_ts, start_after):
+def _update_job(conn, id_, args, channel, thread_ts, message_ts, start_after):
     with conn:
         conn.execute(
-            "UPDATE job SET args = ?, channel = ?, thread_ts = ?, start_after = ? WHERE id = ?",
-            [args, channel, thread_ts, start_after, id_],
+            "UPDATE job SET args = ?, channel = ?, thread_ts = ?, message_ts = ?, start_after = ? WHERE id = ?",
+            [args, channel, thread_ts, message_ts, start_after, id_],
         )
 
 

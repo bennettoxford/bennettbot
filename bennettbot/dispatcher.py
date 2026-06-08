@@ -128,6 +128,10 @@ class JobDispatcher:
         required."""
 
         error = rc != 0
+        # React to the requesting Slack message first, before the various
+        # early-returns below - we want the completion signal regardless of
+        # which branch we end up taking.
+        self.react_to_requesting_message("x" if error else "white_check_mark")
         repost_to_tech_support_on_error = (
             # Call tech-support unless specified otherwise in the job config
             # But not if we're in a DM with the bot, because no-one
@@ -136,13 +140,21 @@ class JobDispatcher:
         )
         if not error:
             if self.job_config["report_stdout"]:
-                with open(self.stdout_path) as f:
-                    if self.job_config["report_format"] == "blocks":
-                        msg = json.load(f)
-                    else:
-                        msg = f.read()
-                    if not msg:
-                        msg = f"No output found for command `{self.job['type']}`"
+                content = self.stdout_path.read_text()
+                if self.job_config["report_format"] == "blocks":
+                    # a suppress_empty job legitimately produces no stdout
+                    # when there's nothing to report, so only load json if there's
+                    # content to load.
+                    msg = json.loads(content) if content.strip() else None
+                else:
+                    msg = content
+                if not msg:
+                    # Empty stdout (or empty blocks array): suppress_empty
+                    # jobs stay silent; everything else falls back
+                    # to a placeholder message so the channel sees something.
+                    if self.job_config.get("suppress_empty"):
+                        return
+                    msg = f"No output found for command `{self.job['type']}`"
             elif self.job_config["report_success"]:
                 msg = f"Command `{self.job['type']}` succeeded"
             else:
@@ -175,6 +187,24 @@ class JobDispatcher:
             self.slack_client.chat_postMessage(
                 channel=settings.SLACK_TECH_SUPPORT_CHANNEL, text=message_url
             )
+
+    def react_to_requesting_message(self, emoji):
+        """Add an emoji reaction to the Slack message that triggered this job."""
+        message_ts = self.job.get("message_ts")
+        if not message_ts:
+            # Note that jobs might not have an originating message (e.g scheduled/automated
+            # runs that call schedule_job() directly, without going via the bot.py. The
+            # main example of this is the webhook in webserver/github.py which schedules
+            # project deploys via callbacks from GitHub).
+            return
+        try:
+            # Note: reacting to the original message isn't the most important thing; if
+            # something goes wrong here, we don't really care, so just swallow any error
+            self.slack_client.reactions_add(
+                channel=self.job["channel"], timestamp=message_ts, name=emoji
+            )
+        except Exception:  # pragma: no cover
+            logger.exception("Failed to add reaction", emoji=emoji)
 
     def set_up_cwd(self):
         """Ensure cwd exists, and maybe refresh fabfile."""

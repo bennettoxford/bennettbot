@@ -1,0 +1,37 @@
+[
+    {
+        "number": 1,
+        "state": "open",
+        "dependency": {"package": {"name": "package-a", "ecosystem": "pip"}, "manifest_path": "requirements.txt"},
+        "security_advisory": {"severity": "critical", "summary": "Critical issue in package-a"},
+        "html_url": "https://github.com/opensafely-core/airlock/security/dependabot/1"
+    },
+    {
+        "number": 2,
+        "state": "open",
+        "dependency": {"package": {"name": "package-b", "ecosystem": "pip"}, "manifest_path": "requirements.txt"},
+        "security_advisory": {"severity": "critical", "summary": "Critical issue in package-b"},
+        "html_url": "https://github.com/opensafely-core/airlock/security/dependabot/2"
+    },
+    {
+        "number": 3,
+        "state": "open",
+        "dependency": {"package": {"name": "package-c", "ecosystem": "npm"}, "manifest_path": "package.json"},
+        "security_advisory": {"severity": "high", "summary": "High issue in package-c"},
+        "html_url": "https://github.com/opensafely-core/airlock/security/dependabot/3"
+    },
+    {
+        "number": 4,
+        "state": "open",
+        "dependency": {"package": {"name": "package-d", "ecosystem": "npm"}, "manifest_path": "package.json"},
+        "security_advisory": {"severity": "high", "summary": "High issue in package-d"},
+        "html_url": "https://github.com/opensafely-core/airlock/security/dependabot/4"
+    },
+    {
+        "number": 5,
+        "state": "open",
+        "dependency": {"package": {"name": "package-e", "ecosystem": "npm"}, "manifest_path": "package.json"},
+        "security_advisory": {"severity": "high", "summary": "High issue in package-e"},
+        "html_url": "https://github.com/opensafely-core/airlock/security/dependabot/5"
+    }
+]
