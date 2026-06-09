@@ -53,6 +53,10 @@ REPOS = {
         "org": "bennettoxford",
         "team": "Team Prescribosaurus",
     },
+    "openprescribing-v2": {
+        "org": "bennettoxford",
+        "team": "Team Prescribosaurus",
+    },
     "opensafely-cli": {
         "org": "opensafely-core",
         "team": "Team REX",
