@@ -29,6 +29,14 @@ _checkenv:
         exit 1
     fi
 
+    target="${WRITEABLE_DIR}/repos_config.yaml"
+    if [[ ! -f "$target" ]]; then
+      config_example="repos_config.sample.yaml"
+      echo "No 'repos_config.yaml' found in WRITEABLE_DIR; copying from $config_example"
+      mkdir -p "$WRITEABLE_DIR"
+      cp "$config_example" "$target"
+    fi
+
 # clean up temporary files
 clean:
     rm -rf .venv
@@ -42,7 +50,7 @@ prodenv:
 #
 
 # Install dev requirements into venv without removing extraneous packages
-devenv: && install-precommit
+devenv: _dotenv && install-precommit
     uv sync --inexact
 
 # Ensure precommit is installed

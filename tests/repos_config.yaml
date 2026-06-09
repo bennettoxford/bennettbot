@@ -1,0 +1,40 @@
+# Minimal config for tests that don't patch workspace.utils.repos_config.load_config.
+# Most tests provide their own config via the use_mock_results helpers; this
+# file only needs to cover the few cases that hit the on-disk loader.
+
+teams:
+  - Tech shared
+  - Team REX
+  - Team RAP
+  - Team Prescribosaurus
+
+shorthands:
+  orgs:
+    os: opensafely
+    osc: opensafely-core
+    ebm: ebmdatalab
+    bo: bennettoxford
+  teams:
+    rap: Team RAP
+    rex: Team REX
+    presc: Team Prescribosaurus
+    tech: Tech shared
+
+repos:
+  opensafely-core:
+    airlock: Team RAP
+  ebmdatalab:
+    bennett.ox.ac.uk: Team REX
+
+workflows:
+  excluded_repos: []
+  ignored_workflows:
+    # mock_airlock_reporter loads workflows.json which includes this Docs
+    # workflow; it must be filtered out to match the WORKFLOWS_MAIN expectation.
+    opensafely-core/airlock:
+      - 94122733
+  workflows_known_to_fail: {}
+  custom_groups: {}
+
+security:
+  excluded_repos: []
