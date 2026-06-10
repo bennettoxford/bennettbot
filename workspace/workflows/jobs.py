@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 
 from bennettbot import settings
 from workspace.utils import repos_config as config
-from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
     get_basic_header_and_text_blocks,
@@ -112,7 +111,9 @@ class RepoWorkflowReporter:
         return workflows
 
     def remove_ignored_workflows(self, workflows):
-        skipped = config.IGNORED_WORKFLOWS.get(self.repo_full_name, [])
+        skipped = config.workflows_config()["ignored_workflows"].get(
+            self.repo_full_name, []
+        )
         for workflow_id in skipped:
             workflows.pop(workflow_id, None)
 
@@ -245,7 +246,9 @@ def _summarise(
         wf_conclusions = RepoWorkflowReporter(repo_full_name).get_latest_conclusions()
 
         # Skip reporting missing workflows and failures that are already known
-        known_failure_ids = config.WORKFLOWS_KNOWN_TO_FAIL.get(repo_full_name, [])
+        known_failure_ids = config.workflows_config()["workflows_known_to_fail"].get(
+            repo_full_name, []
+        )
         wf_conclusions = {
             k: v
             for k, v in wf_conclusions.items()
@@ -286,7 +289,7 @@ def summarise_team(team: str, skip_successful: bool) -> list:
 def summarise_all(skip_successful) -> list:
     # Show in sections by team
     blocks = []
-    for team in config.TEAMS:
+    for team in config.teams():
         team_blocks = summarise_team(team, skip_successful)
         if len(team_blocks) > 1:
             blocks.extend(team_blocks)
@@ -306,12 +309,13 @@ def summarise_workflows_group(group: str, skip_successful: bool) -> list:
     """
     Summarise the status of a group of workflows with specified IDs.
     """
+    custom_groups = config.workflows_config()["custom_groups"]
     try:
-        group_config = config.CUSTOM_WORKFLOWS_GROUPS[group]
+        group_config = custom_groups[group]
     except KeyError:
         return get_basic_header_and_text_blocks(
             header_text=f"Group {group} was not defined",
-            texts=f"Available custom workflow groups are: {', '.join(config.CUSTOM_WORKFLOWS_GROUPS.keys())}",
+            texts=f"Available custom workflow groups are: {', '.join(custom_groups.keys())}",
         )
 
     conclusions = {}
@@ -374,15 +378,16 @@ def _main(targets: list[str], skip_successful: bool) -> str:
         if target.count("/") > 1:
             return report_invalid_target(target)
 
+        org_shorthands = config.org_shorthands()
         if "/" in target:  # Single repo in org/repo format
             org, repo = target.split("/")
-        elif target in config.REPOS:  # Known repo
-            org, repo = config.REPOS[target]["org"], target
+        elif matching_orgs := config.find_orgs_for_repo(target):
+            org, repo = matching_orgs[0], target
         else:  # Assume target is an org
             org, repo = target, None
 
-        org = shorthands.ORGS.get(org, org)
-        if org not in shorthands.ORGS.values():
+        org = org_shorthands.get(org, org)
+        if org not in org_shorthands.values():
             return report_invalid_target(target)
         if repo:
             repo_full_names.append(f"{org}/{repo}")
@@ -417,7 +422,8 @@ def get_text_blocks_for_key(args) -> str:
 
 
 def get_usage_text(args) -> str:
-    orgs = ", ".join([f"`{k} ({v})`" for k, v in shorthands.ORGS.items()])
+    orgs = ", ".join([f"`{k} ({v})`" for k, v in config.org_shorthands().items()])
+    custom_groups = config.workflows_config()["custom_groups"]
     return "\n".join(
         [
             "Usage for `show [target]` (The behaviour for `show-failed [target]` is the same, but skips repos whose workflows are all successful):",
@@ -428,10 +434,10 @@ def get_usage_text(args) -> str:
             "When passing multiple targets, the targets should be of the same type (multiple orgs or multiple repos, but not a combination of both).",
             "",
             "List of known repos:",
-            ", ".join(config.REPOS.keys()),
+            ", ".join(config.all_repo_names()),
             "",
             "Usage for `show-group`:",
-            f"`show-group [group]`: Summarise a custom group of workflows. Available groups are: {', '.join(config.CUSTOM_WORKFLOWS_GROUPS.keys())}.",
+            f"`show-group [group]`: Summarise a custom group of workflows. Available groups are: {', '.join(custom_groups.keys())}.",
         ]
     )
 

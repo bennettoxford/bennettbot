@@ -50,15 +50,48 @@ class MockRepoAlertsReporter(jobs.RepoAlertsReporter):
         return dict(self.counts_by_repo_full_name.get(self.repo_full_name, zeros))
 
 
+def _build_config(repos_config):
+    by_org: dict = {}
+    for repo, meta in repos_config.items():
+        by_org.setdefault(meta["org"], {})[repo] = meta["team"]
+    return {
+        "teams": ["Tech shared", "Team REX", "Team RAP", "Team Prescribosaurus"],
+        "shorthands": {
+            "orgs": {
+                "os": "opensafely",
+                "osc": "opensafely-core",
+                "ebm": "ebmdatalab",
+                "bo": "bennettoxford",
+            },
+            "teams": {
+                "rap": "Team RAP",
+                "rex": "Team REX",
+                "presc": "Team Prescribosaurus",
+                "tech": "Tech shared",
+            },
+        },
+        "repos": by_org,
+        "workflows": {
+            "ignored_workflows": {},
+            "workflows_known_to_fail": {},
+            "custom_groups": {},
+        },
+        "security": {},
+    }
+
+
 def use_mock_results(repos_config, counts_by_repo_full_name):
-    """Patch config.REPOS and RepoAlertsReporter so summary tests don't make HTTP calls."""
+    """Patch config and RepoAlertsReporter so summary tests don't make HTTP calls."""
 
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             MockRepoAlertsReporter.counts_by_repo_full_name = counts_by_repo_full_name
             with (
-                patch("workspace.utils.repos_config.REPOS", repos_config),
+                patch(
+                    "workspace.utils.repos_config.load_config",
+                    return_value=_build_config(repos_config),
+                ),
                 patch(
                     "workspace.security.jobs.RepoAlertsReporter", MockRepoAlertsReporter
                 ),
@@ -223,7 +256,10 @@ REPOS_CONFIG = {
 def test_get_repo_full_names_for_team():
     from workspace.utils import repos_config
 
-    with patch("workspace.utils.repos_config.REPOS", REPOS_CONFIG):
+    with patch(
+        "workspace.utils.repos_config.load_config",
+        return_value=_build_config(REPOS_CONFIG),
+    ):
         assert repos_config.get_repo_full_names_for_team("Team RAP") == [
             "opensafely-core/airlock",
             "opensafely-core/ehrql",
@@ -234,7 +270,10 @@ def test_get_repo_full_names_for_team():
 def test_get_repo_full_names_for_org():
     from workspace.utils import repos_config
 
-    with patch("workspace.utils.repos_config.REPOS", REPOS_CONFIG):
+    with patch(
+        "workspace.utils.repos_config.load_config",
+        return_value=_build_config(REPOS_CONFIG),
+    ):
         assert sorted(repos_config.get_repo_full_names_for_org("opensafely-core")) == [
             "opensafely-core/airlock",
             "opensafely-core/ehrql",
