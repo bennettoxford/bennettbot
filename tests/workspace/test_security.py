@@ -803,3 +803,23 @@ def test_excluded_repos_rejected_as_explicit_target():
     )
     blocks = json.loads(jobs.main(args))
     assert "was not recognised" in blocks[0]["text"]["text"]
+
+
+def test_ambiguous_bare_repo_name_rejected_security():
+    config_override = _build_config(
+        {
+            "airlock": {"org": "opensafely-core", "team": "Team RAP"},
+        }
+    )
+    config_override["repos"].setdefault("opensafely", {})["airlock"] = "Tech shared"
+    with patch(
+        "workspace.utils.repos_config.load_config", return_value=config_override
+    ):
+        args = jobs.get_command_line_parser().parse_args(
+            ["report", "--target", "airlock"]
+        )
+        blocks = json.loads(jobs.main(args))
+    assert blocks[0]["text"]["text"] == "airlock is ambiguous"
+    body_text = blocks[1]["text"]["text"]
+    assert "`opensafely-core/airlock`" in body_text
+    assert "`opensafely/airlock`" in body_text

@@ -1164,3 +1164,23 @@ def test_excluded_repo_rejected_as_explicit_target():
     )
     blocks = json.loads(jobs.main(args))
     assert "was not recognised" in blocks[0]["text"]["text"]
+
+
+@use_mock_results(
+    [
+        RESULT_PATCH_SETTINGS,
+        {
+            "org": "opensafely",
+            "repo": "airlock",
+            "team": "Team REX",
+            "conclusions": [["success", "http://example.com/run/1"]] * 5,
+        },
+    ]
+)
+def test_ambiguous_bare_repo_name_rejected():
+    args = jobs.get_command_line_parser().parse_args("show --target airlock".split())
+    blocks = json.loads(jobs.main(args))
+    assert blocks[0]["text"]["text"] == "airlock is ambiguous"
+    body_text = blocks[1]["text"]["text"]
+    assert "`opensafely-core/airlock`" in body_text
+    assert "`opensafely/airlock`" in body_text

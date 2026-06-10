@@ -32,6 +32,15 @@ def get_basic_header_and_text_blocks(
     return [header_block] + text_blocks
 
 
+def get_ambiguous_target_blocks(target: str, orgs: list[str]) -> list:
+    """Header + body explaining that a bare repo name maps to multiple known orgs."""
+    options = ", ".join(f"`{org}/{target}`" for org in sorted(orgs))
+    return get_basic_header_and_text_blocks(
+        header_text=f"{target} is ambiguous",
+        texts=f"Multiple known orgs have a repo called `{target}`. Please specify one of: {options}.",
+    )
+
+
 def truncate_text(text, max_len=3000):
     # Slack has a limit of 3000 characters per text block
     if len(text) > max_len:

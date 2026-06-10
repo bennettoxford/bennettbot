@@ -8,6 +8,7 @@ from bennettbot import settings
 from workspace.utils import repos_config as config
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
+    get_ambiguous_target_blocks,
     get_basic_header_and_text_blocks,
     get_header_block,
     get_text_block,
@@ -390,6 +391,8 @@ def _main(targets: list[str], skip_successful: bool) -> str:
         if "/" in target:  # Single repo in org/repo format
             org, repo = target.split("/")
         elif matching_orgs := config.find_orgs_for_repo(target):
+            if len(matching_orgs) > 1:
+                return json.dumps(get_ambiguous_target_blocks(target, matching_orgs))
             org, repo = matching_orgs[0], target
         else:  # Assume target is an org
             org, repo = target, None
