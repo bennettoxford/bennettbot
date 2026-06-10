@@ -50,7 +50,7 @@ class MockRepoAlertsReporter(jobs.RepoAlertsReporter):
         return dict(self.counts_by_repo_full_name.get(self.repo_full_name, zeros))
 
 
-def _build_config(repos_config):
+def _build_config(repos_config, *, security_excluded_repos=None):
     by_org: dict = {}
     for repo, meta in repos_config.items():
         by_org.setdefault(meta["org"], {})[repo] = meta["team"]
@@ -72,15 +72,18 @@ def _build_config(repos_config):
         },
         "repos": by_org,
         "workflows": {
+            "excluded_repos": [],
             "ignored_workflows": {},
             "workflows_known_to_fail": {},
             "custom_groups": {},
         },
-        "security": {},
+        "security": {"excluded_repos": security_excluded_repos or []},
     }
 
 
-def use_mock_results(repos_config, counts_by_repo_full_name):
+def use_mock_results(
+    repos_config, counts_by_repo_full_name, *, security_excluded_repos=None
+):
     """Patch config and RepoAlertsReporter so summary tests don't make HTTP calls."""
 
     def decorator(func):
@@ -90,7 +93,10 @@ def use_mock_results(repos_config, counts_by_repo_full_name):
             with (
                 patch(
                     "workspace.utils.repos_config.load_config",
-                    return_value=_build_config(repos_config),
+                    return_value=_build_config(
+                        repos_config,
+                        security_excluded_repos=security_excluded_repos,
+                    ),
                 ),
                 patch(
                     "workspace.security.jobs.RepoAlertsReporter", MockRepoAlertsReporter
@@ -762,3 +768,38 @@ def test_security_slack_routing(text, expected_job_type):
 
     matched = next(sc for sc in bot_config["slack"] if sc["regex"].match(text))
     assert matched["job_type"] == expected_job_type
+
+
+@use_mock_results(
+    REPOS_CONFIG,
+    {
+        "opensafely-core/airlock": {"critical": 1, "high": 0},
+        "opensafely-core/ehrql": {"critical": 0, "high": 5},
+        "opensafely-core/job-server": {"critical": 0, "high": 2},
+        "opensafely/documentation": {"critical": 0, "high": 0},
+    },
+    security_excluded_repos=["opensafely-core/ehrql"],
+)
+def test_excluded_repos_skipped_in_team_summary():
+    blocks = jobs.summarise_team("Team RAP", jobs.DEFAULT_SEVERITIES)
+    rendered = " ".join(b["text"]["text"] for b in blocks)
+    assert "ehrql" not in rendered
+    assert "airlock" in rendered
+
+
+@use_mock_results(
+    REPOS_CONFIG,
+    {
+        "opensafely-core/airlock": {"critical": 0, "high": 0},
+        "opensafely-core/ehrql": {"critical": 0, "high": 0},
+        "opensafely-core/job-server": {"critical": 0, "high": 0},
+        "opensafely/documentation": {"critical": 0, "high": 0},
+    },
+    security_excluded_repos=["opensafely-core/airlock"],
+)
+def test_excluded_repos_rejected_as_explicit_target():
+    args = jobs.get_command_line_parser().parse_args(
+        ["report", "--target", "opensafely-core/airlock"]
+    )
+    blocks = json.loads(jobs.main(args))
+    assert "was not recognised" in blocks[0]["text"]["text"]

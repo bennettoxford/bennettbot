@@ -27,6 +27,7 @@ repos:
     bennett.ox.ac.uk: Team REX
 
 workflows:
+  excluded_repos: []
   ignored_workflows:
     # mock_airlock_reporter loads workflows.json which includes this Docs
     # workflow; it must be filtered out to match the WORKFLOWS_MAIN expectation.
@@ -35,4 +36,5 @@ workflows:
   workflows_known_to_fail: {}
   custom_groups: {}
 
-security: {}
+security:
+  excluded_repos: []

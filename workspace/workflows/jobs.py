@@ -280,9 +280,15 @@ def _summarise(
     return blocks
 
 
+def get_excluded_repos() -> list[str]:
+    return config.workflows_config().get("excluded_repos") or []
+
+
 def summarise_team(team: str, skip_successful: bool) -> list:
     header = f"Workflows for {team}"
-    repo_full_names = config.get_repo_full_names_for_team(team)
+    repo_full_names = config.get_repo_full_names_for_team(
+        team, exclude=get_excluded_repos()
+    )
     return _summarise(header, repo_full_names, skip_successful)
 
 
@@ -300,7 +306,9 @@ def summarise_all(skip_successful) -> list:
 
 def summarise_org(org, skip_successful) -> list:
     header_text = f"Workflows for {org} repos"
-    repo_full_names = config.get_repo_full_names_for_org(org)
+    repo_full_names = config.get_repo_full_names_for_org(
+        org, exclude=get_excluded_repos()
+    )
     blocks = _summarise(header_text, repo_full_names, skip_successful)
     return blocks
 
@@ -390,7 +398,10 @@ def _main(targets: list[str], skip_successful: bool) -> str:
         if org not in org_shorthands.values():
             return report_invalid_target(target)
         if repo:
-            repo_full_names.append(f"{org}/{repo}")
+            full_name = f"{org}/{repo}"
+            if full_name in get_excluded_repos():
+                return report_invalid_target(target)
+            repo_full_names.append(full_name)
         else:
             orgs.append(org)
 

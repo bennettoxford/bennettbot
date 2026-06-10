@@ -50,14 +50,35 @@ def workflows_config() -> dict:
     return load_config()["workflows"]
 
 
-def get_repo_full_names_for_team(team: str) -> list[str]:
+def security_config() -> dict:
+    return load_config()["security"]
+
+
+def _iter_repo_full_names(exclude: list[str] | None = None):
+    excluded = set(exclude or [])
+    for org, repos in repos_by_org().items():
+        for repo, team in repos.items():
+            full_name = f"{org}/{repo}"
+            if full_name in excluded:
+                continue
+            yield full_name, org, team
+
+
+def get_repo_full_names_for_team(
+    team: str, exclude: list[str] | None = None
+) -> list[str]:
     return [
-        f"{org}/{repo}"
-        for org, repos in repos_by_org().items()
-        for repo, repo_team in repos.items()
+        full_name
+        for full_name, _, repo_team in _iter_repo_full_names(exclude)
         if repo_team == team
     ]
 
 
-def get_repo_full_names_for_org(org: str) -> list[str]:
-    return [f"{org}/{repo}" for repo in repos_by_org().get(org, {})]
+def get_repo_full_names_for_org(
+    org: str, exclude: list[str] | None = None
+) -> list[str]:
+    return [
+        full_name
+        for full_name, repo_org, _ in _iter_repo_full_names(exclude)
+        if repo_org == org
+    ]

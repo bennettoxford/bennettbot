@@ -182,10 +182,14 @@ def _wrap_with_top_header(
     return [get_header_block(_top_header_text(severities)), *body]
 
 
+def get_excluded_repos() -> list[str]:
+    return config.security_config().get("excluded_repos") or []
+
+
 def summarise_team(team: str, severities: list[str]) -> list:
     return _section_blocks(
         team,
-        config.get_repo_full_names_for_team(team),
+        config.get_repo_full_names_for_team(team, exclude=get_excluded_repos()),
         severities,
     )
 
@@ -193,7 +197,7 @@ def summarise_team(team: str, severities: list[str]) -> list:
 def summarise_org(org: str, severities: list[str]) -> list:
     return _section_blocks(
         org,
-        config.get_repo_full_names_for_org(org),
+        config.get_repo_full_names_for_org(org, exclude=get_excluded_repos()),
         severities,
     )
 
@@ -285,7 +289,10 @@ def _main(targets: list[str], severities: list[str], quiet: bool = False) -> lis
         if org not in org_shorthands.values():
             return report_invalid_target(target)
         if repo:
-            repo_full_names.append(f"{org}/{repo}")
+            full_name = f"{org}/{repo}"
+            if full_name in get_excluded_repos():
+                return report_invalid_target(target)
+            repo_full_names.append(full_name)
         else:
             orgs.append(org)
 

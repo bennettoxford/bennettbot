@@ -114,6 +114,7 @@ class MockRepoWorkflowReporter(jobs.RepoWorkflowReporter):
 
 
 DEFAULT_WORKFLOWS_CONFIG = {
+    "excluded_repos": [],
     "ignored_workflows": {},
     "workflows_known_to_fail": {},
     "custom_groups": {},
@@ -142,7 +143,7 @@ def use_mock_results(patch_settings, workflows_overrides=None):
         },
         "repos": repos_by_org,
         "workflows": {**DEFAULT_WORKFLOWS_CONFIG, **(workflows_overrides or {})},
-        "security": {},
+        "security": {"excluded_repos": []},
     }
 
     def decorator_use_mock_results(func):
@@ -1105,11 +1106,12 @@ def test_show_group():
         "shorthands": {"orgs": {}, "teams": {}},
         "repos": {},
         "workflows": {
+            "excluded_repos": [],
             "ignored_workflows": {},
             "workflows_known_to_fail": {},
             "custom_groups": {"check-links": ...},
         },
-        "security": {},
+        "security": {"excluded_repos": []},
     },
 )
 def test_show_group_not_found(_):
@@ -1131,3 +1133,34 @@ def test_show_group_not_found(_):
             },
         },
     ]
+
+
+@use_mock_results(
+    [
+        RESULT_PATCH_SETTINGS,
+        {
+            "org": "opensafely",
+            "repo": "excluded-repo",
+            "team": "Team REX",
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
+        },
+    ],
+    workflows_overrides={"excluded_repos": ["opensafely/excluded-repo"]},
+)
+def test_excluded_repo_skipped_in_team_summary():
+    args = jobs.get_command_line_parser().parse_args("show".split())
+    blocks = json.loads(jobs.main(args))
+    rendered = json.dumps(blocks)
+    assert "excluded-repo" not in rendered
+
+
+@use_mock_results(
+    [RESULT_PATCH_SETTINGS],
+    workflows_overrides={"excluded_repos": ["opensafely-core/airlock"]},
+)
+def test_excluded_repo_rejected_as_explicit_target():
+    args = jobs.get_command_line_parser().parse_args(
+        "show --target opensafely-core/airlock".split()
+    )
+    blocks = json.loads(jobs.main(args))
+    assert "was not recognised" in blocks[0]["text"]["text"]
