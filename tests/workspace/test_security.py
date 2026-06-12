@@ -805,7 +805,7 @@ def test_excluded_repos_rejected_as_explicit_target():
     assert "was not recognised" in blocks[0]["text"]["text"]
 
 
-def test_ambiguous_bare_repo_name_rejected_security():
+def test_ambiguous_bare_repo_name_rejected():
     config_override = _build_config(
         {
             "airlock": {"org": "opensafely-core", "team": "Team RAP"},
