@@ -4,10 +4,10 @@ import os
 
 import requests
 
+from workspace.utils import repos_config
 from workspace.utils.argparse import SplitCommaSeparatedString
 from workspace.utils.blocks import get_basic_header_and_text_blocks
 from workspace.utils.people import People
-from workspace.utils.shorthands import ORGS
 
 
 URL = "https://api.github.com/graphql"
@@ -28,7 +28,7 @@ def post_request(payload):  # pragma: no cover
 
 
 def main(project_num, statuses, org=ORG_NAME):
-    org = ORGS.get(org, org)
+    org = repos_config.org_shorthands().get(org, org)
     project_id = get_project_id(int(project_num), org)
     cards = get_project_cards(project_id, org)
     tickets_by_status = {status: [] for status in statuses}

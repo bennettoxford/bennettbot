@@ -142,7 +142,9 @@ python-dotenv==1.2.2
     #   environs
     #   pytest-env
 pyyaml==6.0.3
-    # via pre-commit
+    # via
+    #   bennettbot
+    #   pre-commit
 requests==2.34.2
     # via
     #   bennettbot

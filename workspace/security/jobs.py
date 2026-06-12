@@ -4,9 +4,9 @@ import os
 
 from bennettbot import settings
 from workspace.utils import repos_config as config
-from workspace.utils import shorthands
 from workspace.utils.argparse import SplitString
 from workspace.utils.blocks import (
+    get_ambiguous_target_blocks,
     get_basic_header_and_text_blocks,
     get_header_block,
     get_text_block,
@@ -183,17 +183,29 @@ def _wrap_with_top_header(
     return [get_header_block(_top_header_text(severities)), *body]
 
 
+def get_excluded_repos() -> list[str]:
+    return config.security_config().get("excluded_repos") or []
+
+
 def summarise_team(team: str, severities: list[str]) -> list:
-    return _section_blocks(team, config.get_repo_full_names_for_team(team), severities)
+    return _section_blocks(
+        team,
+        config.get_repo_full_names_for_team(team, exclude=get_excluded_repos()),
+        severities,
+    )
 
 
 def summarise_org(org: str, severities: list[str]) -> list:
-    return _section_blocks(org, config.get_repo_full_names_for_org(org), severities)
+    return _section_blocks(
+        org,
+        config.get_repo_full_names_for_org(org, exclude=get_excluded_repos()),
+        severities,
+    )
 
 
 def summarise_all(severities: list[str], quiet: bool = False) -> list:
     body = []
-    for team in config.TEAMS:
+    for team in config.teams():
         body.extend(summarise_team(team, severities))
     return _wrap_with_top_header(body, severities, quiet=quiet)
 
@@ -251,13 +263,15 @@ def _main(targets: list[str], severities: list[str], quiet: bool = False) -> lis
     orgs: list[str] = []
     repo_full_names: list[str] = []
 
+    team_shorthands = config.team_shorthands()
+    org_shorthands = config.org_shorthands()
     for target in targets:
         # Some repos are names of websites and Slack auto-linkifies them by prepending
         # http:// (or https:// for some domains)
         target = target.removeprefix("http://").removeprefix("https://")
 
-        if target in shorthands.TEAMS:
-            teams.append(shorthands.TEAMS[target])
+        if target in team_shorthands:
+            teams.append(team_shorthands[target])
             continue
 
         # More than one "/" can never be a valid org/repo (e.g. "a/b/c").
@@ -266,17 +280,22 @@ def _main(targets: list[str], severities: list[str], quiet: bool = False) -> lis
 
         if "/" in target:
             org, repo = target.split("/")
-        elif target in config.REPOS:
-            org, repo = config.REPOS[target]["org"], target
+        elif matching_orgs := config.find_orgs_for_repo(target):
+            if len(matching_orgs) > 1:
+                return get_ambiguous_target_blocks(target, matching_orgs)
+            org, repo = matching_orgs[0], target
         else:
             # No "/" and not a known short repo name - assume it's an org.
             org, repo = target, None
 
-        org = shorthands.ORGS.get(org, org)
-        if org not in shorthands.ORGS.values():
+        org = org_shorthands.get(org, org)
+        if org not in org_shorthands.values():
             return report_invalid_target(target)
         if repo:
-            repo_full_names.append(f"{org}/{repo}")
+            full_name = f"{org}/{repo}"
+            if full_name in get_excluded_repos():
+                return report_invalid_target(target)
+            repo_full_names.append(full_name)
         else:
             orgs.append(org)
 
@@ -314,8 +333,8 @@ def _main(targets: list[str], severities: list[str], quiet: bool = False) -> lis
 
 
 def get_usage_text(args) -> str:
-    orgs = ", ".join(f"`{k} ({v})`" for k, v in shorthands.ORGS.items())
-    teams = ", ".join(f"`{k} ({v})`" for k, v in shorthands.TEAMS.items())
+    orgs = ", ".join(f"`{k} ({v})`" for k, v in config.org_shorthands().items())
+    teams = ", ".join(f"`{k} ({v})`" for k, v in config.team_shorthands().items())
     lines = [
         "Usage for `security report [target]`:",
         "`report`: Report open critical/high security alerts across all teams.",
@@ -329,8 +348,13 @@ def get_usage_text(args) -> str:
         "",
         "Repos monitored, by team:",
     ]
-    for team in config.TEAMS:
-        repos = sorted(repo for repo, v in config.REPOS.items() if v["team"] == team)
+    for team in config.teams():
+        repos = sorted(
+            repo
+            for repos_in_org in config.repos_by_org().values()
+            for repo, repo_team in repos_in_org.items()
+            if repo_team == team
+        )
         lines.append(f"  - {team}: {', '.join(repos) if repos else '(none)'}")
     return "\n".join(lines)
 

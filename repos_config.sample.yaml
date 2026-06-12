@@ -1,0 +1,110 @@
+# Example repos config for bennettbot.
+# Created: 2026-06-10; this represents the state of production config at this time.
+# Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
+# production updates do not require a code change.
+
+teams:
+  - Tech shared
+  - Team REX
+  - Team RAP
+  - Team Prescribosaurus
+
+shorthands:
+  orgs:
+    os: opensafely
+    osc: opensafely-core
+    ebm: ebmdatalab
+    bo: bennettoxford
+  teams:
+    rap: Team RAP
+    rex: Team REX
+    presc: Team Prescribosaurus
+    tech: Tech shared
+
+# Repos grouped by their owning org; values are {repo_name: team}.
+repos:
+  opensafely-core:
+    actions-registry: Team REX
+    airlock: Team RAP
+    backend-server: Team RAP
+    ehrql: Team RAP
+    ethelred: Tech shared
+    job-runner: Team RAP
+    job-server: Team REX
+    opensafely-cli: Team REX
+    opencodelists: Team REX
+    opensafely-vscode: Team RAP
+    osgithub: Team REX
+    pipeline: Team RAP
+    python-docker: Team RAP
+    r-docker: Team RAP
+    reports: Team REX
+    repo-template: Tech shared
+    research-action: Team REX
+    research-template-docker: Team REX
+    sqlrunner: Team RAP
+    stata-docker: Team RAP
+    sysadmin: Team RAP
+    tpp-database-utils: Team RAP
+  opensafely:
+    documentation: Tech shared
+  ebmdatalab:
+    bennett.ox.ac.uk: Team REX
+    metrics: Team REX
+    team-manual: Team REX
+    sysadmin: Team RAP
+  bennettoxford:
+    bennettbot: Team RAP
+    kissh: Team RAP
+    openprescribing: Team Prescribosaurus
+    openprescribing-v2: Team Prescribosaurus
+    update-dependencies-action: Team RAP
+
+workflows:
+  # Repos in this list are skipped entirely by the workflows jobs.
+  excluded_repos: []
+
+  # Workflow IDs that should not be reported for the given repo.
+  ignored_workflows:
+    opensafely-core/backend-server:
+      - 88048790  # Disabled
+    opensafely/documentation:
+      - 65834242  # [On workflow dispatch] Check docs with Vale
+    opensafely-core/airlock:
+      - 94122733  # [Ignored on main, PR#277] Docs
+    opensafely-core/job-runner:
+      - 26915901  # [On workflow call] Add software bill of materials to release (reusable)
+      - 26915902  # [On workflow call] Scan with Grype (reusable)
+      - 25002877  # [On PR] Dependency review
+      - 2393224   # [On PR] Tests
+    opensafely-core/pipeline:
+      - 77090712  # [Disabled] Pin pydantic
+    opensafely-core/python-docker:
+      - 6866192   # [On PR] Run tests
+      - 21967294  # [On PR] Dependabot auto-approve and enable auto-merge
+    opensafely-core/sqlrunner:
+      - 108481072  # [Removed] Dependabot Updates
+    bennettoxford/bennettbot:
+      - 32719413  # [On PR] Auto merge Dependabot PRs
+
+  # Workflows known to fail; their failures are suppressed in summaries.
+  workflows_known_to_fail:
+    opensafely/documentation:
+      - 25878886  # Check links (expected to break, notifications handled elsewhere)
+    ebmdatalab/bennett.ox.ac.uk:
+      - 42498719  # Check links (expected to break, notifications handled elsewhere)
+    ebmdatalab/team-manual:
+      - 31178226  # Check links (expected to break, notifications handled elsewhere)
+
+  # Custom groups of workflows that can be reported on by name.
+  custom_groups:
+    check-links:
+      header_text: Link-checking workflows
+      workflows:
+        opensafely/documentation: [25878886]
+        ebmdatalab/bennett.ox.ac.uk: [42498719]
+        ebmdatalab/team-manual: [31178226]
+
+security:
+  # Repos in this list are skipped entirely by the security jobs.
+  excluded_repos: []

@@ -1,13 +1,7 @@
-ORGS = {
-    "os": "opensafely",
-    "osc": "opensafely-core",
-    "ebm": "ebmdatalab",
-    "bo": "bennettoxford",
-}
+from workspace.utils import repos_config
 
-TEAMS = {
-    "rap": "Team RAP",
-    "rex": "Team REX",
-    "presc": "Team Prescribosaurus",
-    "tech": "Tech shared",
-}
+
+config = repos_config.load_config()
+
+ORGS = config["shorthands"]["orgs"]
+TEAMS = config["shorthands"]["teams"]

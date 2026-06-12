@@ -113,14 +113,42 @@ class MockRepoWorkflowReporter(jobs.RepoWorkflowReporter):
         pass
 
 
-def use_mock_results(patch_settings):
+DEFAULT_WORKFLOWS_CONFIG = {
+    "excluded_repos": [],
+    "ignored_workflows": {},
+    "workflows_known_to_fail": {},
+    "custom_groups": {},
+}
+
+
+def use_mock_results(patch_settings, workflows_overrides=None):
+    repos_by_org = {}
+    for r in patch_settings:
+        repos_by_org.setdefault(r["org"], {})[r["repo"]] = r["team"]
+    mock_config = {
+        "teams": ["Tech shared", "Team REX", "Team RAP", "Team Prescribosaurus"],
+        "shorthands": {
+            "orgs": {
+                "os": "opensafely",
+                "osc": "opensafely-core",
+                "ebm": "ebmdatalab",
+                "bo": "bennettoxford",
+            },
+            "teams": {
+                "rap": "Team RAP",
+                "rex": "Team REX",
+                "presc": "Team Prescribosaurus",
+                "tech": "Tech shared",
+            },
+        },
+        "repos": repos_by_org,
+        "workflows": {**DEFAULT_WORKFLOWS_CONFIG, **(workflows_overrides or {})},
+        "security": {"excluded_repos": []},
+    }
+
     def decorator_use_mock_results(func):
         @functools.wraps(func)
         def wrapper_use_mock_results(*args, **kwargs):
-            # Mock config
-            mock_repos_config = {
-                r["repo"]: {"org": r["org"], "team": r["team"]} for r in patch_settings
-            }
             # Mock cache
             keys = sorted(list(WORKFLOWS_MAIN.keys()))
             mock_cache = {
@@ -133,9 +161,11 @@ def use_mock_results(patch_settings):
                 }
                 for r in patch_settings
             }
-            # Patch the config and use results from the mock cache
             with (
-                patch("workspace.utils.repos_config.REPOS", mock_repos_config),
+                patch(
+                    "workspace.utils.repos_config.load_config",
+                    return_value=mock_config,
+                ),
                 patch("workspace.workflows.jobs.load_cache", return_value=mock_cache),
                 patch(
                     "workspace.workflows.jobs.RepoWorkflowReporter",
@@ -810,12 +840,6 @@ def test_main_show_all():
     ]
 
 
-@patch(
-    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
-    {
-        "opensafely/failing-repo": [82728346, 88048829, 94331150, 108457763, 113602598],
-    },
-)
 @use_mock_results(
     [
         RESULT_PATCH_SETTINGS,
@@ -825,7 +849,18 @@ def test_main_show_all():
             "team": "Team REX",
             "conclusions": [["failure", "http://example.com/run/1"]] * 5,
         },
-    ]
+    ],
+    workflows_overrides={
+        "workflows_known_to_fail": {
+            "opensafely/failing-repo": [
+                82728346,
+                88048829,
+                94331150,
+                108457763,
+                113602598,
+            ],
+        },
+    },
 )
 def test_main_show_all_skip_failures():
     # Call main for all repos without skipping successful workflows
@@ -906,14 +941,6 @@ def test_main_show_failed_found():
     ]
 
 
-@patch(
-    "workspace.utils.repos_config.WORKFLOWS_KNOWN_TO_FAIL",
-    {
-        # Second-last workflow is known to fail
-        "opensafely-core/airlock": [108457763],
-        "opensafely/failing-repo": [108457763],
-    },
-)
 @use_mock_results(
     [
         {
@@ -942,7 +969,14 @@ def test_main_show_failed_found():
                 ["failure", "http://example.com/run/fail"],
             ],
         },
-    ]
+    ],
+    workflows_overrides={
+        "workflows_known_to_fail": {
+            # Second-last workflow is known to fail
+            "opensafely-core/airlock": [108457763],
+            "opensafely/failing-repo": [108457763],
+        },
+    },
 )
 def test_main_show_failed_skipped():
     # Call main for all repos with skipping successful workflows
@@ -996,19 +1030,6 @@ def test_main_show_invalid_target():
     ]
 
 
-@patch(
-    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
-    {
-        "check-links": {
-            "header_text": "Link-checking workflows",
-            "workflows": {
-                "opensafely/documentation": [82728346],
-                "ebmdatalab/bennett.ox.ac.uk": [82728346],
-                "ebmdatalab/team-manual": [82728346],
-            },
-        }
-    },
-)
 @use_mock_results(
     [
         {
@@ -1029,7 +1050,19 @@ def test_main_show_invalid_target():
             "team": "Tech shared",
             "conclusions": [["success", "https://example.com/run/success"]] * 5,
         },
-    ]
+    ],
+    workflows_overrides={
+        "custom_groups": {
+            "check-links": {
+                "header_text": "Link-checking workflows",
+                "workflows": {
+                    "opensafely/documentation": [82728346],
+                    "ebmdatalab/bennett.ox.ac.uk": [82728346],
+                    "ebmdatalab/team-manual": [82728346],
+                },
+            }
+        },
+    },
 )
 def test_show_group():
     args = jobs.get_command_line_parser().parse_args("show --group check-links".split())
@@ -1067,10 +1100,21 @@ def test_show_group():
 
 
 @patch(
-    "workspace.utils.repos_config.CUSTOM_WORKFLOWS_GROUPS",
-    {"check-links": ...},
+    "workspace.utils.repos_config.load_config",
+    return_value={
+        "teams": [],
+        "shorthands": {"orgs": {}, "teams": {}},
+        "repos": {},
+        "workflows": {
+            "excluded_repos": [],
+            "ignored_workflows": {},
+            "workflows_known_to_fail": {},
+            "custom_groups": {"check-links": ...},
+        },
+        "security": {"excluded_repos": []},
+    },
 )
-def test_show_group_not_found():
+def test_show_group_not_found(_):
     args = jobs.get_command_line_parser().parse_args("show --group unknown".split())
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -1089,3 +1133,54 @@ def test_show_group_not_found():
             },
         },
     ]
+
+
+@use_mock_results(
+    [
+        RESULT_PATCH_SETTINGS,
+        {
+            "org": "opensafely",
+            "repo": "excluded-repo",
+            "team": "Team REX",
+            "conclusions": [["failure", "http://example.com/run/1"]] * 5,
+        },
+    ],
+    workflows_overrides={"excluded_repos": ["opensafely/excluded-repo"]},
+)
+def test_excluded_repo_skipped_in_team_summary():
+    args = jobs.get_command_line_parser().parse_args("show".split())
+    blocks = json.loads(jobs.main(args))
+    rendered = json.dumps(blocks)
+    assert "excluded-repo" not in rendered
+
+
+@use_mock_results(
+    [RESULT_PATCH_SETTINGS],
+    workflows_overrides={"excluded_repos": ["opensafely-core/airlock"]},
+)
+def test_excluded_repo_rejected_as_explicit_target():
+    args = jobs.get_command_line_parser().parse_args(
+        "show --target opensafely-core/airlock".split()
+    )
+    blocks = json.loads(jobs.main(args))
+    assert "was not recognised" in blocks[0]["text"]["text"]
+
+
+@use_mock_results(
+    [
+        RESULT_PATCH_SETTINGS,
+        {
+            "org": "opensafely",
+            "repo": "airlock",
+            "team": "Team REX",
+            "conclusions": [["success", "http://example.com/run/1"]] * 5,
+        },
+    ]
+)
+def test_ambiguous_bare_repo_name_rejected():
+    args = jobs.get_command_line_parser().parse_args("show --target airlock".split())
+    blocks = json.loads(jobs.main(args))
+    assert blocks[0]["text"]["text"] == "airlock is ambiguous"
+    body_text = blocks[1]["text"]["text"]
+    assert "`opensafely-core/airlock`" in body_text
+    assert "`opensafely/airlock`" in body_text

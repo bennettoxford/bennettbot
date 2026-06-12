@@ -1,186 +1,84 @@
-TEAMS = ["Tech shared", "Team REX", "Team RAP", "Team Prescribosaurus"]
+"""YAML-backed access to the shared repos/workflows/security config.
 
-REPOS = {
-    "actions-registry": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "airlock": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "backend-server": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "bennett.ox.ac.uk": {
-        "org": "ebmdatalab",
-        "team": "Team REX",
-    },
-    "bennettbot": {
-        "org": "bennettoxford",
-        "team": "Team RAP",
-    },
-    "documentation": {
-        "org": "opensafely",
-        "team": "Tech shared",
-    },
-    "ehrql": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "ethelred": {
-        "org": "opensafely-core",
-        "team": "Tech shared",
-    },
-    "job-runner": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "job-server": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "kissh": {
-        "org": "bennettoxford",
-        "team": "Team RAP",
-    },
-    "metrics": {
-        "org": "ebmdatalab",
-        "team": "Team REX",
-    },
-    "openprescribing": {
-        "org": "bennettoxford",
-        "team": "Team Prescribosaurus",
-    },
-    "openprescribing-v2": {
-        "org": "bennettoxford",
-        "team": "Team Prescribosaurus",
-    },
-    "opensafely-cli": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "opencodelists": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "opensafely-vscode": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "osgithub": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "pipeline": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "python-docker": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "r-docker": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "reports": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "repo-template": {
-        "org": "opensafely-core",
-        "team": "Tech shared",
-    },
-    "research-action": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "research-template-docker": {
-        "org": "opensafely-core",
-        "team": "Team REX",
-    },
-    "sqlrunner": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "stata-docker": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "team-manual": {
-        "org": "ebmdatalab",
-        "team": "Team REX",
-    },
-    "tpp-database-utils": {
-        "org": "opensafely-core",
-        "team": "Team RAP",
-    },
-    "update-dependencies-action": {
-        "org": "bennettoxford",
-        "team": "Team RAP",
-    },
-}
+The config file lives at ``$WRITEABLE_DIR/repos_config.yaml`` so it can be
+updated in production without a code change. See
+``workspace/utils/repos_config.example.yaml`` for the expected shape.
+"""
 
-IGNORED_WORKFLOWS = {
-    "opensafely-core/backend-server": [
-        88048790,  # Disabled
-    ],
-    "opensafely/documentation": [
-        65834242,  # [On workflow dispatch] Check docs with Vale
-    ],
-    "opensafely-core/airlock": [
-        94122733,  # [Ignored on main, PR#277] Docs
-    ],
-    "opensafely-core/job-runner": [
-        26915901,  # [On workflow call] Add software bill of materials to release (reusable)
-        26915902,  # [On workflow call] Scan with Grype (reusable)
-        25002877,  # [On PR] Dependency review
-        2393224,  # [On PR] Tests
-    ],
-    "opensafely-core/pipeline": [
-        77090712,  # [Disabled] Pin pydantic
-    ],
-    "opensafely-core/python-docker": [
-        6866192,  # [On PR] Run tests
-        21967294,  # [On PR] Dependabot auto-approve and enable auto-merge
-    ],
-    "opensafely-core/sqlrunner": [
-        108481072,  # [Removed] Dependabot Updates
-    ],
-    "bennettoxford/bennettbot": [
-        32719413,  # [On PR] Auto merge Dependabot PRs
-    ],
-}
+import functools
 
-WORKFLOWS_KNOWN_TO_FAIL = {
-    "opensafely/documentation": [
-        25878886,  # Check links (expected to break, notifications handled elsewhere)
-    ],
-    "ebmdatalab/bennett.ox.ac.uk": [
-        42498719,  # Check links (expected to break, notifications handled elsewhere)
-    ],
-    "ebmdatalab/team-manual": [
-        31178226,  # Check links (expected to break, notifications handled elsewhere)
-    ],
-}
+import yaml
 
-CUSTOM_WORKFLOWS_GROUPS = {
-    "check-links": {
-        "header_text": "Link-checking workflows",
-        "workflows": {
-            "opensafely/documentation": [25878886],
-            "ebmdatalab/bennett.ox.ac.uk": [42498719],
-            "ebmdatalab/team-manual": [31178226],
-        },
-    }
-}
+from bennettbot import settings
 
 
-def get_repo_full_names_for_team(team: str) -> list[str]:
-    return [f"{v['org']}/{repo}" for repo, v in REPOS.items() if v["team"] == team]
+CONFIG_PATH = settings.WRITEABLE_DIR / "repos_config.yaml"
 
 
-def get_repo_full_names_for_org(org: str) -> list[str]:
-    return [f"{org}/{repo}" for repo, v in REPOS.items() if v["org"] == org]
+@functools.cache
+def load_config() -> dict:
+    return yaml.safe_load(CONFIG_PATH.read_text())
+
+
+def teams() -> list[str]:
+    return load_config()["teams"]
+
+
+def org_shorthands() -> dict:
+    return load_config()["shorthands"]["orgs"]
+
+
+def team_shorthands() -> dict:
+    return load_config()["shorthands"]["teams"]
+
+
+def repos_by_org() -> dict:
+    """{org: {repo_name: team}} — the on-disk shape."""
+    return load_config()["repos"]
+
+
+def all_repo_names() -> list[str]:
+    return [repo for repos in repos_by_org().values() for repo in repos]
+
+
+def find_orgs_for_repo(name: str) -> list[str]:
+    """All orgs whose YAML entry includes a repo with this name."""
+    return [org for org, repos in repos_by_org().items() if name in repos]
+
+
+def workflows_config() -> dict:
+    return load_config()["workflows"]
+
+
+def security_config() -> dict:
+    return load_config()["security"]
+
+
+def _iter_repo_full_names(exclude: list[str] | None = None):
+    excluded = set(exclude or [])
+    for org, repos in repos_by_org().items():
+        for repo, team in repos.items():
+            full_name = f"{org}/{repo}"
+            if full_name in excluded:
+                continue
+            yield full_name, org, team
+
+
+def get_repo_full_names_for_team(
+    team: str, exclude: list[str] | None = None
+) -> list[str]:
+    return [
+        full_name
+        for full_name, _, repo_team in _iter_repo_full_names(exclude)
+        if repo_team == team
+    ]
+
+
+def get_repo_full_names_for_org(
+    org: str, exclude: list[str] | None = None
+) -> list[str]:
+    return [
+        full_name
+        for full_name, repo_org, _ in _iter_repo_full_names(exclude)
+        if repo_org == org
+    ]
