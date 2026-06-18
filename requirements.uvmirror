@@ -156,7 +156,7 @@ slack-bolt==1.28.0
     # via bennettbot
 slack-sdk==3.42.0
     # via slack-bolt
-structlog==25.5.0
+structlog==26.1.0
     # via bennettbot
 typing-extensions==4.15.0
     # via mocket

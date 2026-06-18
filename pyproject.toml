@@ -12,7 +12,7 @@ dependencies = [
   "gunicorn<=26.0.0",
   "requests<=2.34.2",
   "slack_bolt<=1.28.0",
-  "structlog<=25.5.0",
+  "structlog<=26.1.0",
   # for op commands
   "django-dotenv<=1.4.2",
   # for commands that read from Google Sheets
