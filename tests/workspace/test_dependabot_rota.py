@@ -35,6 +35,7 @@ EXTRA_TEXT = (
     "|Combined link>. "
     "Merge any outstanding non-NPM Dependabot/update-dependencies-action PRs."
     "\nReview Thomas' PRs for NPM updates.\n"
+    "Please also review the Codespaces at risk report.\n"
 )
 
 

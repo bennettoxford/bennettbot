@@ -71,6 +71,7 @@ def report_rota() -> str:
         f"\nReview repos {repo_links_text}. <{combined_link}|Combined link>. "
         "Merge any outstanding non-NPM Dependabot/update-dependencies-action PRs.\n"
         "Review Thomas' PRs for NPM updates.\n"
+        "Please also review the Codespaces at risk report.\n"
     )
 
     return DependabotRotaReporter(title="Dependabot rota").report(extra_text)
