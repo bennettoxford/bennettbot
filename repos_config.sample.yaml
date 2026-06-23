@@ -28,7 +28,6 @@ repos:
     airlock: Team RAP
     backend-server: Team RAP
     ehrql: Team RAP
-    ethelred: Tech shared
     job-runner: Team RAP
     job-server: Team REX
     opensafely-cli: Team REX
