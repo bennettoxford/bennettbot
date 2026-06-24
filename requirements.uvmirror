@@ -125,7 +125,7 @@ pyparsing==3.3.2
     # via
     #   bennettbot
     #   httplib2
-pytest==9.0.3
+pytest==9.1.0
     # via
     #   pytest-cov
     #   pytest-env
@@ -149,7 +149,7 @@ requests==2.34.2
     # via
     #   bennettbot
     #   google-api-core
-ruff==0.15.14
+ruff==0.15.17
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.28.0
