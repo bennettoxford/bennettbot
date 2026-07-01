@@ -4,7 +4,7 @@ bcrypt==5.0.0
     # via paramiko
 blinker==1.9.0
     # via flask
-certifi==2026.5.20
+certifi==2026.6.17
     # via requests
 cffi==2.0.0 ; platform_python_implementation != 'PyPy'
     # via
@@ -20,15 +20,15 @@ colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   pytest
-coverage==7.14.1
+coverage==7.14.3
     # via pytest-cov
-cryptography==48.0.1
+cryptography==49.0.0
     # via
     #   google-auth
     #   paramiko
 decorator==5.3.1
     # via mocket
-distlib==0.4.2
+distlib==0.4.3
     # via virtualenv
 django-dotenv==1.4.2
     # via bennettbot
@@ -36,7 +36,7 @@ environs==15.0.1
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
-filelock==3.29.1
+filelock==3.29.4
     # via
     #   python-discovery
     #   virtualenv
@@ -48,7 +48,7 @@ google-api-core==2.31.0
     # via google-api-python-client
 google-api-python-client==2.197.0
     # via bennettbot
-google-auth==2.53.0
+google-auth==2.55.0
     # via
     #   google-api-core
     #   google-api-python-client
@@ -104,7 +104,7 @@ pluggy==1.6.0
 pre-commit==4.6.0
 proto-plus==1.28.0
     # via google-api-core
-protobuf==7.35.0
+protobuf==7.35.1
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -135,7 +135,7 @@ pytest-env==1.6.0
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.4.0
+python-discovery==1.4.2
     # via virtualenv
 python-dotenv==1.2.2
     # via
@@ -166,7 +166,7 @@ urllib3==2.7.0
     # via
     #   mocket
     #   requests
-virtualenv==21.4.2
+virtualenv==21.5.1
     # via pre-commit
 werkzeug==3.1.8
     # via flask
