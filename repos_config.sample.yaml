@@ -1,5 +1,8 @@
+# NOTE: THIS FILE REPRESENTS EXAMPLE CONFIG ONLY. CHANGES MADE HERE WILL NOT BE
+# AUTOMATICALLY APPLIED TO PRODUCTION
+#
 # Example repos config for bennettbot.
-# Created: 2026-06-10; this represents the state of production config at this time.
+# Updated: 2026-06-23; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 
