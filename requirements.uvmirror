@@ -46,7 +46,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.31.0
     # via google-api-python-client
-google-api-python-client==2.197.0
+google-api-python-client==2.198.0
     # via bennettbot
 google-auth==2.53.0
     # via
@@ -152,7 +152,7 @@ requests==2.34.2
 ruff==0.15.14
 six==1.17.0
     # via python-dateutil
-slack-bolt==1.28.0
+slack-bolt==1.29.0
     # via bennettbot
 slack-sdk==3.42.0
     # via slack-bolt
