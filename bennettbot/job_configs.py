@@ -679,6 +679,12 @@ raw_config = {
             },
         ],
     },
+    "pin": {
+        "description": "Platform Insights",
+        "default_channel": "#team-pin",
+        "jobs": {},
+        "slack": [],
+    },
 }
 # fmt: on
 
