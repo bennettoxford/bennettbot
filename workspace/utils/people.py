@@ -94,4 +94,5 @@ TEAM_REX = [
     People.STEVE,
     People.MIKE,
     People.THOMAS,
+    People.ELI,
 ]
