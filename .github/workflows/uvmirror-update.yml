@@ -18,7 +18,7 @@ jobs:
     outputs:
       changed: ${{ steps.check_for_changes.outputs.changed }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: opensafely-core/setup-action@d9171097dd0d37bdb7bed58f701eb03ff317ed17 # v1
         with:
           install-just: true
@@ -51,7 +51,7 @@ jobs:
           app-id: ${{ vars.CREATE_PR_APP_ID }}
           private-key: ${{ secrets.CREATE_PR_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ env.BRANCH_NAME }}
           token: ${{ steps.generate-token.outputs.token }}
