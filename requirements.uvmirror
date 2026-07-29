@@ -101,7 +101,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.0
+pre-commit==4.6.1
 proto-plus==1.28.1
     # via google-api-core
 protobuf==7.35.1
@@ -131,7 +131,7 @@ pytest==9.1.1
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.1.0
-pytest-env==1.6.0
+pytest-env==1.7.0
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
@@ -149,7 +149,7 @@ requests==2.34.2
     # via
     #   bennettbot
     #   google-api-core
-ruff==0.15.21
+ruff==0.15.22
 six==1.17.0
     # via python-dateutil
 slack-bolt==1.29.0
