@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-06-23; this represents the state of production config at this time.
+# Updated: 2026-07-31; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 
@@ -10,7 +10,7 @@ teams:
   - Tech shared
   - Team REX
   - Team RAP
-  - Team Prescribosaurus
+  - OpenPrescribing dev
 
 shorthands:
   orgs:
@@ -21,7 +21,7 @@ shorthands:
   teams:
     rap: Team RAP
     rex: Team REX
-    presc: Team Prescribosaurus
+    presc: OpenPrescribing dev
     tech: Tech shared
 
 # Repos grouped by their owning org; values are {repo_name: team}.
@@ -58,8 +58,8 @@ repos:
   bennettoxford:
     bennettbot: Team RAP
     kissh: Team RAP
-    openprescribing: Team Prescribosaurus
-    openprescribing-v2: Team Prescribosaurus
+    openprescribing: OpenPrescribing dev
+    openprescribing-v2: OpenPrescribing dev
     update-dependencies-action: Team RAP
 
 workflows:
