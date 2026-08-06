@@ -152,7 +152,7 @@ requests==2.34.2
 ruff==0.15.22
 six==1.17.0
     # via python-dateutil
-slack-bolt==1.29.0
+slack-bolt==1.30.0
     # via bennettbot
 slack-sdk==3.43.0
     # via slack-bolt
