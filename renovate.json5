@@ -124,6 +124,12 @@
     //   "matchDepNames": ["Django"],
     //   "allowedVersions": "<6.0"
     // },
+    // temporarily pin ruff until https://github.com/bennettoxford/bennettbot/issues/931
+    {
+      "matchManagers": ["pep621"],
+      "matchDepNames": ["ruff"],
+      "allowedVersions": "<0.16"
+    },
   ],
   // Include vulnerability alerts; this uses dependabot and requires that depenency graph and
   // dependabot alerts are enabled in the repo
