@@ -6,7 +6,7 @@ blinker==1.9.0
     # via flask
 certifi==2026.7.22
     # via requests
-cffi==2.1.0 ; platform_python_implementation != 'PyPy'
+cffi==2.1.1 ; platform_python_implementation != 'PyPy'
     # via
     #   cryptography
     #   pynacl
@@ -87,7 +87,7 @@ marshmallow==4.3.0
 mocket==3.14.3
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.2
+packaging==26.3
     # via
     #   gunicorn
     #   pytest
