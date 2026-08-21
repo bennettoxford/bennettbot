@@ -32,7 +32,7 @@ distlib==0.4.3
     # via virtualenv
 django-dotenv==1.4.2
     # via bennettbot
-environs==15.0.1
+environs==15.1.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
