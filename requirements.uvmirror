@@ -99,7 +99,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.1
+pre-commit==4.6.2
 proto-plus==1.28.2
     # via google-api-core
 protobuf==7.35.1
