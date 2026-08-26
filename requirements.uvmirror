@@ -57,7 +57,7 @@ google-auth-httplib2==0.4.1
     # via google-api-python-client
 googleapis-common-protos==1.75.1
     # via google-api-core
-gunicorn==26.0.0
+gunicorn==26.1.0
     # via bennettbot
 h11==0.16.0
     # via mocket
@@ -88,9 +88,7 @@ mocket==3.14.3
 nodeenv==1.10.0
     # via pre-commit
 packaging==26.3
-    # via
-    #   gunicorn
-    #   pytest
+    # via pytest
 paramiko==5.0.0
     # via fab-classic
 platformdirs==4.11.3
