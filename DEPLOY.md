@@ -151,10 +151,16 @@ OpenPrescribing, and are configured at https://github.com/bennettoxford/openpres
 - `GITHUB_WEBHOOK_SECRET`
 - `WEBHOOK_ORIGIN`
 
-The following environment variable allows the bot to authenticate with Github to retrieve
-project information.
-- `DATA_TEAM_GITHUB_API_TOKEN`: Note that this must be a classic PAT (not fine-grained)
-  and needs the `repo` and `read:project` scope
+The following environment variable allows the bot to authenticate with Github to retrieve GitHub project boards, and workflow and security alert information for
+repos.
+- `DATA_TEAM_GITHUB_API_TOKEN`: Note that this must be a classic PAT (not fine-grained) as it requires access to multiple organizations. It needs the `repo` and `read:project` scope.
+
+ The following environment variable allows the bot to authenticate with Github to retrieve codespaces information.
+- `CODESPACES_GITHUB_API_TOKEN`: This is a fine-grained PAT for the opensafely
+  organization, with access to All Repositories and the following permissions:
+    - Repository permissions: "Codespaces" - read-only
+    - Organization permisions: "Organization codespaces" - read-only
+   Note that is must be created in an account with "owner" role on the opensafely organization.
 
 This is the path to credentials for the gdrive@ebmdatalab.iam.gserviceaccount.com
 service account:
@@ -224,3 +230,35 @@ On dokku3:
 ```
 $ dokku git:from-image bennettbot <IMAGE_DIGEST>
 ```
+
+## Rotating GitHub tokens
+
+See notes on [configuring app environment variables](#configure-app-environment-variables)
+for details of required permissions for these tokens.
+
+### Rotating the DATA_TEAM_GITHUB_API_TOKEN
+The `DATA_TEAM_GITHUB_API_TOKEN` currently has to be created in an individual
+developer's GitHub account, as it requires access to multiple organistations.
+
+1. Log into your GitHub account.
+1. Go to the Personal access tokens (classic) page.
+1. Click on bennettbot-data-team-github-api-token (or create a new one with the scopes [described above](#configure-app-environment-variables)).
+1. Click "Regenerate token".
+1. Set the expiry to 90 days.
+1. Copy the new token.
+1. ssh into dokku3.ebmdatalab.net
+1. Run: dokku config:set bennettbot DATA_TEAM_GITHUB_API_TOKEN=<the new token>
+
+### Rotating the CODESPACES_GITHUB_API_TOKEN
+The `CODESPACES_GITHUB_API_TOKEN` has to be created in a GitHub account
+that has the owner role on the opensafely organization. Currently that means an
+individual developer's GitHub account.
+1. Log into your GitHub account.
+1. Go to the Personal access tokens (fine-grained) page.
+1. Click on bennettbot-codespaces-github-api-token (or create a new one with the
+permissions [described above](#configure-app-environment-variables)).
+1. Click "Regenerate token".
+1. Set the expiry to 90 days.
+1. Copy the new token.
+1. ssh into dokku3.ebmdatalab.net
+1. Run: dokku config:set bennettbot CODESPACES_GITHUB_API_TOKEN=<the new token>

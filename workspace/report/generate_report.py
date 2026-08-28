@@ -11,7 +11,9 @@ from workspace.utils.people import People
 
 
 URL = "https://api.github.com/graphql"
-TOKEN = os.environ["DATA_TEAM_GITHUB_API_TOKEN"]  # requires "read:project" and "repo"
+# requires "read:project" and "repo"
+# For setting/rotating this token, see DEPLOY.md
+TOKEN = os.environ["DATA_TEAM_GITHUB_API_TOKEN"]
 HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json",

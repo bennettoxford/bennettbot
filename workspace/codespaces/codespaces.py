@@ -34,12 +34,11 @@ Emoji = RichTextElementParts.Emoji
 
 
 URL_PATTERN = "https://api.github.com/orgs/{org}/codespaces"
-# The token can be a classic PAT with the admin:org scope or a fine-grained
-# token with "Codespaces" repository permissions set to "read" and
-# "Organization codespaces" organization permissions set to "read".
+# The token must be a fine-grained token, generated in an account with "owner" role
+# on the for the opensafely org, and with "Codespaces" repository permissions set to
+# "read" and "Organization codespaces" organization permissions set to "read".
 # https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2022-11-28#list-codespaces-for-the-organization
-# Someone with admin permissions on the organization needs to create it.
-# For the opensafely org, created PATs should be stored in BitWarden.
+# For setting/rotating this token, see DEPLOY.md
 github_client = GitHubAPIClient(
     os.environ["CODESPACES_GITHUB_API_TOKEN"], api_version="2022-11-28"
 )
