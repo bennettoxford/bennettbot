@@ -46,7 +46,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.34.0
     # via google-api-python-client
-google-api-python-client==2.198.0
+google-api-python-client==2.199.0
     # via bennettbot
 google-auth==2.56.3
     # via
@@ -57,7 +57,7 @@ google-auth-httplib2==0.4.1
     # via google-api-python-client
 googleapis-common-protos==1.75.1
     # via google-api-core
-gunicorn==26.1.0
+gunicorn==26.2.0
     # via bennettbot
 h11==0.16.0
     # via mocket
