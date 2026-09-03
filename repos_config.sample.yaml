@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-07-31; this represents the state of production config at this time.
+# Updated: 2026-09-03; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 
@@ -44,6 +44,7 @@ repos:
     repo-template: Tech shared
     research-action: Team REX
     research-template-docker: Team REX
+    setup-action: Tech shared
     sqlrunner: Team RAP
     stata-docker: Team RAP
     sysadmin: Team RAP
