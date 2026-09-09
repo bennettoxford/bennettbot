@@ -30,7 +30,7 @@ distlib==0.4.3
     # via virtualenv
 django-dotenv==1.4.2
     # via bennettbot
-environs==15.1.0
+environs==15.2.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
@@ -44,7 +44,7 @@ freezegun==1.5.5
     # via pytest-freezer
 google-api-core==2.34.0
     # via google-api-python-client
-google-api-python-client==2.199.0
+google-api-python-client==2.200.0
     # via bennettbot
 google-auth==2.57.0
     # via
