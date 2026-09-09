@@ -124,5 +124,5 @@ dev = [
   "pytest-cov<=7.1.0",
   "pytest-env<=1.7.0",
   "pytest-freezer<=0.4.9",
-  "mocket<=3.14.3",
+  "mocket<=3.14.4",
 ]
