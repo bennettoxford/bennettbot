@@ -35,7 +35,7 @@ Emoji = RichTextElementParts.Emoji
 
 URL_PATTERN = "https://api.github.com/orgs/{org}/codespaces"
 # The token must be a fine-grained token, generated in an account with "owner" role
-# on the for the opensafely org, and with "Codespaces" repository permissions set to
+# on the opensafely org, and with "Codespaces" repository permissions set to
 # "read" and "Organization codespaces" organization permissions set to "read".
 # https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2022-11-28#list-codespaces-for-the-organization
 # For setting/rotating this token, see DEPLOY.md
