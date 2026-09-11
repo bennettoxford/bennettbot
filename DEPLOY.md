@@ -159,7 +159,7 @@ repos.
 - `CODESPACES_GITHUB_API_TOKEN`: This is a fine-grained PAT for the opensafely
   organization, with access to All Repositories and the following permissions:
     - Repository permissions: "Codespaces" - read-only
-    - Organization permisions: "Organization codespaces" - read-only
+    - Organization permissions: "Organization codespaces" - read-only
    Note that is must be created in an account with "owner" role on the opensafely organization.
 
 This is the path to credentials for the gdrive@ebmdatalab.iam.gserviceaccount.com
