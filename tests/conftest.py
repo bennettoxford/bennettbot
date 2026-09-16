@@ -27,3 +27,12 @@ def reset_repos_config_cache():
     repos_config.load_config.cache_clear()
     yield
     repos_config.load_config.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def github_app_settings():
+    environ = os.environ.copy()
+    os.environ["GITHUB_APP_CLIENT_ID"] = "client-id"
+    os.environ["GITHUB_APP_PRIVATE_KEY"] = "private-key"
+    yield
+    os.environ = environ

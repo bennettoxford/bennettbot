@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -54,6 +55,18 @@ def test_read_only_session_rejects_non_get(method):
     session = github_rest_api.ReadOnlySession()
     with pytest.raises(RuntimeError, match="read-only"):
         getattr(session, method)("https://api.github.com/anything")
+
+
+def test_read_only_session_allows_access_token_post():
+    with patch.object(github_rest_api.requests.Session, "request"):
+        session = github_rest_api.ReadOnlySession()
+        # this is fine
+        session.post("https://api.github.com/app/installations/123/access_tokens/")
+        # so is the trailing slash
+        session.post("https://api.github.com/app/installations/123/access_tokens")
+        # this doesn't match
+        with pytest.raises(RuntimeError, match="read-only"):
+            session.post("https://api.github.com/app/installations/foo/access_tokens")
 
 
 def test_client_sends_expected_headers():
@@ -142,3 +155,144 @@ def test_get_paginated_json_with_etag_returns_not_modified_on_304():
     assert result.etag == "old-etag"
     assert list(result) == []
     assert mock_get.call_args.kwargs["headers"]["If-None-Match"] == "old-etag"
+
+
+@pytest.mark.parametrize(
+    "expiry,expected",
+    [
+        (datetime(2026, 3, 1, 10, 30, 30, tzinfo=UTC), 30),
+        (datetime(2026, 3, 1, 10, 29, 30, tzinfo=UTC), -30),
+        (None, None),
+    ],
+)
+def test_client_with_token_expiry(freezer, expiry, expected):
+    freezer.move_to(datetime(2026, 3, 1, 10, 30, 0, tzinfo=UTC))
+    client = github_rest_api.GitHubAPIClient("test-token", expiry=expiry)
+    assert client.seconds_to_token_expiry() == expected
+
+
+@patch("workspace.utils.github_rest_api.jwt.encode")
+def test_get_jwt(mock_encode, freezer):
+    mock_now = datetime(2026, 3, 1, 10, 30, 0, tzinfo=UTC)
+    freezer.move_to(mock_now)
+    ts = mock_now.timestamp()
+    github_rest_api.get_jwt()
+    mock_encode.assert_called_with(
+        {"iat": ts, "exp": ts + 300, "iss": "client-id"},
+        "private-key",
+        algorithm="RS256",
+    )
+
+
+def test_get_installation_token():
+    response = MagicMock(links={})
+    response.json.return_value = {
+        "token": "installation-token",
+        "expires_at": "2026-03-01T11:30:00+00:00",
+    }
+    with patch.object(
+        github_rest_api.readonly_session, "post", return_value=response
+    ) as mock_post:
+        token, expiry = github_rest_api.get_installation_token(
+            123, "test-jwt", {"metadata": "read"}
+        )
+    assert token == "installation-token"
+    assert expiry == datetime(2026, 3, 1, 11, 30, tzinfo=UTC)
+    mock_post.assert_called_once_with(
+        "https://api.github.com/app/installations/123/access_tokens",
+        headers={
+            "Authorization": "Bearer test-jwt",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "bennettbot",
+            "X-GitHub-Api-Version": "2026-03-10",
+        },
+        json={"permissions": {"metadata": "read"}},
+    )
+
+
+def test_github_client_for_org():
+    with (
+        patch.object(
+            github_rest_api, "get_jwt", return_value="test-jwt"
+        ) as mock_get_jwt,
+        patch.object(
+            github_rest_api,
+            "get_installation_token",
+            return_value=(
+                "installation-token",
+                datetime(2026, 3, 1, 11, 30, tzinfo=UTC),
+            ),
+        ) as mock_get_token,
+    ):
+        client = github_rest_api.github_client_for_org(123, {"metadata": "read"})
+    mock_get_jwt.assert_called_once()
+    mock_get_token.assert_called_once_with(123, "test-jwt", {"metadata": "read"})
+    assert isinstance(client, github_rest_api.GitHubAPIClient)
+    assert client.headers["Authorization"] == "Bearer installation-token"
+    assert client.expiry == datetime(2026, 3, 1, 11, 30, tzinfo=UTC)
+
+
+def test_multi_org_client_default_permissions():
+    client = github_rest_api.GitHubMultiOrgClient()
+    assert client.permissions == {"metadata": "read"}
+
+
+def test_multi_org_client_custom_permissions():
+    client = github_rest_api.GitHubMultiOrgClient(permissions={"contents": "read"})
+    assert client.permissions == {"contents": "read"}
+
+
+def test_client_for_org_creates_and_caches_client():
+    org_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api, "github_client_for_org", return_value=org_client
+    ) as mock_client_for_org:
+        multi_client = github_rest_api.GitHubMultiOrgClient()
+        result = multi_client.client_for_org("opensafely-core")
+        assert result is org_client
+        mock_client_for_org.assert_called_once_with(123, {"metadata": "read"})
+
+        # A second call for the same org reuses the cached client rather than
+        # fetching a new installation token.
+        refetched_client = multi_client.client_for_org("opensafely-core")
+    assert refetched_client is org_client
+    mock_client_for_org.assert_called_once()
+
+
+def test_client_for_org_regenerates_expiring_token():
+    stale_client = MagicMock(seconds_to_token_expiry=lambda: 60)
+    fresh_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api,
+        "github_client_for_org",
+        side_effect=[stale_client, fresh_client],
+    ) as mock_client_for_org:
+        multi_client = github_rest_api.GitHubMultiOrgClient()
+        first = multi_client.client_for_org("opensafely-core")
+        second = multi_client.client_for_org("opensafely-core")
+    assert first is stale_client
+    assert second is fresh_client
+    assert mock_client_for_org.call_count == 2
+
+
+def test_client_for_org_uses_separate_clients_per_org():
+    core_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    ebm_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api,
+        "github_client_for_org",
+        side_effect=[core_client, ebm_client],
+    ) as mock_client_for_org:
+        multi_client = github_rest_api.GitHubMultiOrgClient()
+        assert multi_client.client_for_org("opensafely-core") is core_client
+        assert multi_client.client_for_org("ebmdatalab") is ebm_client
+    mock_client_for_org.assert_any_call(123, {"metadata": "read"})
+    mock_client_for_org.assert_any_call(456, {"metadata": "read"})
+
+
+def test_client_for_org_unknown_org_raises_error():
+    multi_client = github_rest_api.GitHubMultiOrgClient()
+    with pytest.raises(
+        AssertionError, match="installation id not configured for nonexistent-org"
+    ):
+        multi_client.client_for_org("nonexistent-org")
