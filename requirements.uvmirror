@@ -24,6 +24,7 @@ cryptography==50.0.1
     # via
     #   google-auth
     #   paramiko
+    #   pyjwt
 decorator==5.3.1
     # via mocket
 distlib==0.4.3
@@ -115,6 +116,8 @@ pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementatio
     # via cffi
 pygments==2.21.0
     # via pytest
+pyjwt==2.14.0
+    # via bennettbot
 pynacl==1.6.2
     # via paramiko
 pyparsing==3.3.2
