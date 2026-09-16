@@ -20,6 +20,10 @@ shorthands:
     presc: Team Prescribosaurus
     tech: Tech shared
 
+installation_ids:
+  opensafely-core: 123
+  ebmdatalab: 456
+
 repos:
   opensafely-core:
     airlock: Team RAP
