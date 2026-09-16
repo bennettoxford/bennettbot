@@ -23,6 +23,7 @@ shorthands:
 installation_ids:
   opensafely-core: 123
   ebmdatalab: 456
+  opensafely: 789
 
 repos:
   opensafely-core:
