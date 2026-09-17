@@ -67,9 +67,12 @@ class GitHubAPIClient:
     Allows a single POST, to get app installation tokens.
 
     Parameters:
-        token: the GitHub PAT (classic or fine-grained) or installation
-            token to authenticate with. The required scopes or permissions
-            are endpoint-specific; see each caller's notes for what's needed.
+        token: the GitHub app installation token or fine-grained
+            organisation-scoped PAT to authenticate with. Classic PATs
+            should not be used.
+            The required scopes or permissions are endpoint-specific;
+            see each caller's notes for what's needed.
+
         expiry: token expiry datetime
         api_version: value for the `X-GitHub-Api-Version` header. Pin
             this so a future GitHub default bump can't silently change
