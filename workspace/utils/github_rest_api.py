@@ -256,6 +256,12 @@ class GitHubMultiOrgClient:
     Clients are created, with their tokens, only when required; app installation
     tokens expire in 1 hour, so when a caller retrieves a client for a particular org,
     we check it's not expiring in the next 10 minutes, and regenerate it if required.
+
+    Local-dev fallback: we don't want devs to use the prod GitHub app locally, and
+    we don't want a dev-only app installed on every org just to support manual testing.
+    When the app credentials aren't set, fall back to a token in `<ORG>_DEV_GITHUB_TOKEN`,
+    so devs can generate one scoped to just the org(s) they need to test against and set
+    it locally.
     """
 
     max_token_age_seconds = 10 * 60
@@ -265,6 +271,12 @@ class GitHubMultiOrgClient:
         self.permissions = permissions or {"metadata": "read"}
 
     def client_for_org(self, org):
+        if not (
+            os.environ.get("GITHUB_APP_CLIENT_ID")
+            and os.environ.get("GITHUB_APP_PRIVATE_KEY")
+        ):
+            return self._dev_client_for_org(org)
+
         client = self._github_clients.get(org)
         if (
             client is None
@@ -277,3 +289,14 @@ class GitHubMultiOrgClient:
                 installation_id, self.permissions
             )
         return self._github_clients[org]
+
+    def _dev_client_for_org(self, org):
+        env_var = f"{org.replace('-', '_').upper()}_DEV_GITHUB_TOKEN"
+        token = os.environ.get(env_var)
+        assert token, (
+            f"GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY are not set, and no "
+            f"local-dev fallback token was found in {env_var}. Set the app "
+            f"credentials, or set {env_var} to a fine-grained PAT scoped to "
+            f"{org} for local testing."
+        )
+        return GitHubAPIClient(token)
