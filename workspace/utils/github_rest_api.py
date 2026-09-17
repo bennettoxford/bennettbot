@@ -17,9 +17,12 @@ import requests
 from workspace.utils import repos_config
 
 
+GRAPHQL_URL = "https://api.github.com/graphql"
+
+
 class ReadOnlySession(requests.Session):
-    """A `requests.Session` that refuses any non-GET HTTP method, with
-    the exception of calls to fetch an app installation token.
+    """A `requests.Session` that refuses any non-GET HTTP method, with the
+    exception of calls to fetch an app installation token and GraphQL queries.
 
     A basic guard against accidentally writing to GitHub via this module.
     Tokens may have scopes that permit writes (classic PATs can't be
@@ -29,6 +32,9 @@ class ReadOnlySession(requests.Session):
 
     Note that we're now using a GitHub app with readonly permissions, but
     we keep the guard anyway.
+
+    GraphQL has no GET equivalent - it's a single POST endpoint - so it's
+    allowed through as an exception too (see `GitHubAPIClient.post_graphql`).
     """
 
     access_token_re = re.compile(
@@ -36,7 +42,12 @@ class ReadOnlySession(requests.Session):
     )
 
     def request(self, method, url, *args, **kwargs):
-        if method.upper() != "GET" and not self.access_token_re.match(url):
+        allowed = (
+            method.upper() == "GET"
+            or url == GRAPHQL_URL
+            or self.access_token_re.match(url)
+        )
+        if not allowed:
             raise RuntimeError(
                 f"workspace.utils.github_rest_api is read-only; refusing {method!r} "
                 f"request to {url}."
@@ -97,6 +108,33 @@ class GitHubAPIClient:
     def post_json(self, url: str, params: dict | None = None) -> dict | list:
         """Single POST, returning the JSON body."""
         response = readonly_session.post(url, headers=self.headers, json=params)
+        response.raise_for_status()
+        return response.json()
+
+    # Prevent "mutation" queries; note that we don't just allow the `query`
+    # keyword (although all our current queries use it), because GraphQL allows an
+    # the `query` keyword to be omitted entirely, and there are other non-mutating
+    # operation types. We just prevent "mutation", which is the only keyword that writes,
+    mutation_re = re.compile(r"^\s*mutation\b")
+
+    def post_graphql(self, query: str, variables: dict | None = None) -> dict:
+        """POST a GraphQL query, returning the parsed JSON body.
+
+        The GitHub GraphQL API is a single POST endpoint - there's no GET
+        equivalent - so `ReadOnlySession` allows this URL through as an
+        exception but refuses to send a mutation operation.
+        """
+        if self.mutation_re.match(query):
+            raise RuntimeError(
+                "workspace.utils.github_rest_api is read-only; refusing a GraphQL "
+                "mutation."
+            )
+        headers = {**self.headers, "GraphQL-Features": "projects_next_graphql"}
+        response = readonly_session.post(
+            GRAPHQL_URL,
+            headers=headers,
+            json={"query": query, "variables": variables},
+        )
         response.raise_for_status()
         return response.json()
 
