@@ -125,7 +125,7 @@ pytest==9.1.1
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.1.0
-pytest-env==1.7.0
+pytest-env==1.7.1
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
