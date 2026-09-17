@@ -17,5 +17,5 @@ WEBHOOK_ORIGIN=http://changeme:1234
 # If you need to test jobs that call the GitHub API locally, don't set
 # GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY - instead set a
 # fine-grained PAT with readonly permissions per org you want to test against,
-# e.g.OPENSAFELY_CORE_DEV_GITHUB_TOKEN - see GithubMultiOrgClient.client_for_org
+# e.g.OPENSAFELY_CORE_DEV_GITHUB_TOKEN - see get_client_for_org
 # in workspace/utils/github_rest_api.py.

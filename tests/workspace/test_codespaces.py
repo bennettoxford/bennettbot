@@ -7,25 +7,16 @@ import pytest
 from workspace.codespaces import codespaces
 
 
-@pytest.fixture(autouse=True)
-def reset_github_client_cache():
-    """`codespaces.github_client` is a module-level singleton; clear its
-    per-org client cache before and after each test so a real `client_for_org`
-    call in one test can't leak a cached client into another.
-    """
-    codespaces.github_client._github_clients = {}
-    yield
-    codespaces.github_client._github_clients = {}
-
-
 @pytest.fixture
 def mock_org_client(monkeypatch):
-    """Stub out installation-token fetching: `client_for_org` always returns
-    the same mock client, so tests can exercise `main()` without hitting the
-    installation-token endpoint.
+    """Stub out installation-token fetching: `get_client_for_org` always
+    returns the same mock client, so tests can exercise `main()` without
+    hitting the installation-token endpoint.
     """
     client = MagicMock()
-    monkeypatch.setattr(codespaces.github_client, "client_for_org", lambda org: client)
+    monkeypatch.setattr(
+        codespaces, "get_client_for_org", lambda org, permissions=None: client
+    )
     return client
 
 
@@ -103,21 +94,14 @@ def test_is_at_risk(remaining_days, threshold, has_uncommitted, has_unpushed, ex
     assert codespaces.is_at_risk(cs, threshold) is expected
 
 
-def test_github_client_requests_organization_codespaces_permission():
-    assert codespaces.github_client.permissions == {
-        "organization_codespaces": "read",
-        "codespaces": "read",
-    }
-
-
 def test_main_uses_client_for_configured_org():
-    # Exercises the real `client_for_org` (unlike `mock_org_client`), to check
-    # it routes to the "opensafely" org's installation and requests the
-    # module's permissions/api_version.
+    # Exercises the real `get_client_for_org` (unlike `mock_org_client`), to
+    # check it routes to the "opensafely" org's installation and requests the
+    # module's permissions.
     fake_client = MagicMock()
     fake_client.get_paginated_json.return_value = []
     with patch(
-        "workspace.utils.github_rest_api.github_client_for_org",
+        "workspace.utils.github_rest_api.create_github_client_for_org",
         return_value=fake_client,
     ) as mock_github_client_for_org:
         codespaces.main(5)

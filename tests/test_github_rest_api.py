@@ -241,7 +241,7 @@ def test_get_installation_token():
     )
 
 
-def test_github_client_for_org():
+def test_create_github_client_for_org():
     with (
         patch.object(
             github_rest_api, "get_jwt", return_value="test-jwt"
@@ -255,7 +255,7 @@ def test_github_client_for_org():
             ),
         ) as mock_get_token,
     ):
-        client = github_rest_api.github_client_for_org(123, {"metadata": "read"})
+        client = github_rest_api.create_github_client_for_org(123, {"metadata": "read"})
     mock_get_jwt.assert_called_once()
     mock_get_token.assert_called_once_with(123, "test-jwt", {"metadata": "read"})
     assert isinstance(client, github_rest_api.GitHubAPIClient)
@@ -263,70 +263,119 @@ def test_github_client_for_org():
     assert client.expiry == datetime(2026, 3, 1, 11, 30, tzinfo=UTC)
 
 
-def test_multi_org_client_default_permissions():
-    client = github_rest_api.GitHubMultiOrgClient()
-    assert client.permissions == {"metadata": "read"}
-
-
-def test_multi_org_client_custom_permissions():
-    client = github_rest_api.GitHubMultiOrgClient(permissions={"contents": "read"})
-    assert client.permissions == {"contents": "read"}
-
-
-def test_client_for_org_creates_and_caches_client():
+def test_get_client_for_org_default_permissions():
     org_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
     with patch.object(
-        github_rest_api, "github_client_for_org", return_value=org_client
+        github_rest_api, "create_github_client_for_org", return_value=org_client
     ) as mock_client_for_org:
-        multi_client = github_rest_api.GitHubMultiOrgClient()
-        result = multi_client.client_for_org("opensafely-core")
+        github_rest_api.get_client_for_org("opensafely-core")
+    mock_client_for_org.assert_called_once_with(123, {"metadata": "read"})
+
+
+def test_get_client_for_org_creates_and_caches_client():
+    org_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api, "create_github_client_for_org", return_value=org_client
+    ) as mock_client_for_org:
+        result = github_rest_api.get_client_for_org(
+            "opensafely-core", {"metadata": "read"}
+        )
         assert result is org_client
         mock_client_for_org.assert_called_once_with(123, {"metadata": "read"})
 
-        # A second call for the same org reuses the cached client rather than
-        # fetching a new installation token.
-        refetched_client = multi_client.client_for_org("opensafely-core")
+        # A second call with the same org and permissions reuses the cached
+        # client rather than fetching a new installation token.
+        refetched_client = github_rest_api.get_client_for_org(
+            "opensafely-core", {"metadata": "read"}
+        )
     assert refetched_client is org_client
     mock_client_for_org.assert_called_once()
 
 
-def test_client_for_org_regenerates_expiring_token():
+def test_get_client_for_org_cache_ignores_permissions_key_order():
+    # The cache key sorts permissions items, so a dict with the same
+    # key/value pairs in a different order still hits the same cache
+    # entry rather than creating a redundant installation token.
+    org_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api, "create_github_client_for_org", return_value=org_client
+    ) as mock_client_for_org:
+        first = github_rest_api.get_client_for_org(
+            "opensafely-core", {"metadata": "read", "contents": "read"}
+        )
+        second = github_rest_api.get_client_for_org(
+            "opensafely-core", {"contents": "read", "metadata": "read"}
+        )
+    assert first is org_client
+    assert second is org_client
+    mock_client_for_org.assert_called_once()
+
+
+def test_get_client_for_org_regenerates_expiring_token():
     stale_client = MagicMock(seconds_to_token_expiry=lambda: 60)
     fresh_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
     with patch.object(
         github_rest_api,
-        "github_client_for_org",
+        "create_github_client_for_org",
         side_effect=[stale_client, fresh_client],
     ) as mock_client_for_org:
-        multi_client = github_rest_api.GitHubMultiOrgClient()
-        first = multi_client.client_for_org("opensafely-core")
-        second = multi_client.client_for_org("opensafely-core")
+        first = github_rest_api.get_client_for_org(
+            "opensafely-core", {"metadata": "read"}
+        )
+        second = github_rest_api.get_client_for_org(
+            "opensafely-core", {"metadata": "read"}
+        )
     assert first is stale_client
     assert second is fresh_client
     assert mock_client_for_org.call_count == 2
 
 
-def test_client_for_org_uses_separate_clients_per_org():
+def test_get_client_for_org_uses_separate_clients_per_org():
     core_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
     ebm_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
     with patch.object(
         github_rest_api,
-        "github_client_for_org",
+        "create_github_client_for_org",
         side_effect=[core_client, ebm_client],
     ) as mock_client_for_org:
-        multi_client = github_rest_api.GitHubMultiOrgClient()
-        assert multi_client.client_for_org("opensafely-core") is core_client
-        assert multi_client.client_for_org("ebmdatalab") is ebm_client
+        assert (
+            github_rest_api.get_client_for_org("opensafely-core", {"metadata": "read"})
+            is core_client
+        )
+        assert (
+            github_rest_api.get_client_for_org("ebmdatalab", {"metadata": "read"})
+            is ebm_client
+        )
     mock_client_for_org.assert_any_call(123, {"metadata": "read"})
     mock_client_for_org.assert_any_call(456, {"metadata": "read"})
 
 
-def test_client_for_org_unknown_org_raises_error():
-    multi_client = github_rest_api.GitHubMultiOrgClient()
+def test_get_client_for_org_uses_separate_clients_per_permissions():
+    # Same org with different permissions must not share a cached client
+    metadata_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    contents_client = MagicMock(seconds_to_token_expiry=lambda: 3600)
+    with patch.object(
+        github_rest_api,
+        "create_github_client_for_org",
+        side_effect=[metadata_client, contents_client],
+    ) as mock_client_for_org:
+        assert (
+            github_rest_api.get_client_for_org("opensafely-core", {"metadata": "read"})
+            is metadata_client
+        )
+        assert (
+            github_rest_api.get_client_for_org("opensafely-core", {"contents": "read"})
+            is contents_client
+        )
+    mock_client_for_org.assert_any_call(123, {"metadata": "read"})
+    mock_client_for_org.assert_any_call(123, {"contents": "read"})
+
+
+def test_get_client_for_org_unknown_org_raises_error():
     with pytest.raises(
         AssertionError, match="installation id not configured for nonexistent-org"
     ):
-        multi_client.client_for_org("nonexistent-org")
+        github_rest_api.get_client_for_org("nonexistent-org")
 
 
 @pytest.mark.parametrize(
@@ -337,39 +386,38 @@ def test_client_for_org_unknown_org_raises_error():
         ("anotherorg", "ANOTHERORG_DEV_GITHUB_TOKEN"),
     ],
 )
-def test_client_for_org_uses_dev_token_when_app_credentials_missing(
+def test_get_client_for_org_uses_dev_token_when_app_credentials_missing(
     monkeypatch, org, env_var
 ):
-    # No GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY, so client_for_org falls
+    # No GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY, so get_client_for_org falls
     # back to a dev PAT from env, without requesting a real installation token.
     monkeypatch.delenv("GITHUB_APP_CLIENT_ID", raising=False)
     monkeypatch.delenv("GITHUB_APP_PRIVATE_KEY", raising=False)
     monkeypatch.setenv(env_var, "dev-pat-token")
     with patch.object(
-        github_rest_api, "github_client_for_org"
+        github_rest_api, "create_github_client_for_org"
     ) as mock_github_client_for_org:
-        multi_client = github_rest_api.GitHubMultiOrgClient()
-        client = multi_client.client_for_org(org)
+        client = github_rest_api.get_client_for_org(org)
     mock_github_client_for_org.assert_not_called()
     assert client.headers["Authorization"] == "Bearer dev-pat-token"
 
 
-def test_client_for_org_partial_app_credentials_falls_back_to_dev_token(monkeypatch):
+def test_get_client_for_org_partial_app_credentials_falls_back_to_dev_token(
+    monkeypatch,
+):
     # Both GITHUB_APP_ env vars are required
     monkeypatch.delenv("GITHUB_APP_PRIVATE_KEY", raising=False)
     monkeypatch.setenv("MY_ORG_DEV_GITHUB_TOKEN", "dev-pat-token")
-    multi_client = github_rest_api.GitHubMultiOrgClient()
-    client = multi_client.client_for_org("my-org")
+    client = github_rest_api.get_client_for_org("my-org")
     assert client.headers["Authorization"] == "Bearer dev-pat-token"
 
 
-def test_client_for_org_dev_fallback_missing_token_raises(monkeypatch):
+def test_get_client_for_org_dev_fallback_missing_token_raises(monkeypatch):
     monkeypatch.delenv("GITHUB_APP_CLIENT_ID", raising=False)
     monkeypatch.delenv("GITHUB_APP_PRIVATE_KEY", raising=False)
     monkeypatch.delenv("MY_ORG_DEV_GITHUB_TOKEN", raising=False)
-    multi_client = github_rest_api.GitHubMultiOrgClient()
     with pytest.raises(
         AssertionError,
         match="no local-dev fallback token was found in MY_ORG_DEV_GITHUB_TOKEN",
     ):
-        multi_client.client_for_org("my-org")
+        github_rest_api.get_client_for_org("my-org")

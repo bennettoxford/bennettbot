@@ -10,10 +10,11 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
-from workspace.utils.github_rest_api import GitHubMultiOrgClient
+from workspace.utils.github_rest_api import get_client_for_org
 
 
-github_client = GitHubMultiOrgClient(permissions={"vulnerability_alerts": "read"})
+# Requires the Repo "Dependabot alerts" app permission (read).
+GITHUB_PERMISSIONS = {"vulnerability_alerts": "read"}
 
 # Local cache of the most recent Dependabot response per (repo, severities),
 # keyed by `"<repo>|<sev1>,<sev2>,…"`. Each entry stores the first-page ETag
@@ -81,7 +82,7 @@ class RepoAlertsReporter:
 
     def get_github_client(self, org: str):
         # Split out so tests can mock this and avoid a real installation-token fetch.
-        return github_client.client_for_org(org)
+        return get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
 
     def _cache_key(self) -> str:
         # Severities are part of the key because the API filters server-side

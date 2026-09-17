@@ -131,20 +131,15 @@ def test_get_open_alerts_and_counts(mock_alerts_endpoint, mock_org_client):
 
 def test_reporter_get_github_client_routes_to_repos_org(mock_alerts_endpoint):
     # Exercises the real `get_github_client`, unlike `mock_org_client`, to check
-    # it delegates to the shared `GitHubMultiOrgClient` for the repo's org.
+    # it delegates to `get_client_for_org` for the repo's org, requesting the
+    # `vulnerability_alerts` permission Dependabot alerts need (and no more).
     with patch.object(
-        jobs.github_client,
-        "client_for_org",
-        return_value=GitHubAPIClient("test-token"),
-    ) as mock_client_for_org:
+        jobs, "get_client_for_org", return_value=GitHubAPIClient("test-token")
+    ) as mock_get_client_for_org:
         jobs.RepoAlertsReporter("opensafely-core/airlock")
-    mock_client_for_org.assert_called_once_with("opensafely-core")
-
-
-def test_github_client_requests_vulnerability_alerts_permission():
-    # Dependabot alerts require the `vulnerability_alerts` app permission;
-    # this test just ensures that permissions are not widened accidentally
-    assert jobs.github_client.permissions == {"vulnerability_alerts": "read"}
+    mock_get_client_for_org.assert_called_once_with(
+        "opensafely-core", permissions={"vulnerability_alerts": "read"}
+    )
 
 
 def test_get_counts_skips_unknown_severity(mock_org_client):

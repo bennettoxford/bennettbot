@@ -4,18 +4,18 @@ import json
 from workspace.utils import repos_config
 from workspace.utils.argparse import SplitCommaSeparatedString
 from workspace.utils.blocks import get_basic_header_and_text_blocks
-from workspace.utils.github_rest_api import GitHubMultiOrgClient
+from workspace.utils.github_rest_api import get_client_for_org
 from workspace.utils.people import People
 
 
 ORG_NAME = "opensafely-core"
-# Requires the "Organization projects" app permission (read).
-github_client = GitHubMultiOrgClient(permissions={"organization_projects": "read"})
+# Requires the Organization "Organization projects" app permission (read).
+GITHUB_PERMISSIONS = {"organization_projects": "read"}
 
 
 def main(project_num, statuses, org=ORG_NAME):
     org = repos_config.org_shorthands().get(org, org)
-    client = github_client.client_for_org(org)
+    client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
     project_id = get_project_id(client, int(project_num), org)
     cards = get_project_cards(client, project_id, org)
     tickets_by_status = {status: [] for status in statuses}

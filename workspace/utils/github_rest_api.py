@@ -242,23 +242,33 @@ def get_installation_token(installation_id: int, jwt: str, permissions: dict[str
     return resp["token"], datetime.fromisoformat(resp["expires_at"])
 
 
-def github_client_for_org(installation_id: int, permissions: dict[str, str]):
+def create_github_client_for_org(installation_id: int, permissions: dict[str, str]):
     token, expiry = get_installation_token(installation_id, get_jwt(), permissions)
     return GitHubAPIClient(token, expiry)
 
 
-class GitHubMultiOrgClient:
+MAX_TOKEN_AGE_SECONDS = 10 * 60
+
+# Cached clients, keyed by (org, sorted permissions items) so different callers
+# requesting different permissions for the same org get separate tokens/clients.
+_client_cache: dict[tuple, GitHubAPIClient] = {}
+
+
+def get_client_for_org(
+    org: str, permissions: dict[str, str] | None = None
+) -> GitHubAPIClient:
     """
-    A wrapper for multiple github clients per organisation, each with its
-    own app installation token and restricted set of permissions.
+    Get a read-only `GitHubAPIClient` for an org, with an app installation token
+    scoped to the given permissions.
 
-    If no permissions are supplied, default to the minumim {metadata: read}
-    (passing an empty dict as permissions gives us a token with all the
-    app's permissions)
+    If no permissions are supplied, default to the minimum {metadata: read}
+    (passing an empty dict as permissions gives us a token with all the app's
+    permissions).
 
-    Clients are created, with their tokens, only when required; app installation
-    tokens expire in 1 hour, so when a caller retrieves a client for a particular org,
-    we check it's not expiring in the next 10 minutes, and regenerate it if required.
+    Clients are created, with their tokens, only when required, and cached per
+    (org, permissions) pair; app installation tokens expire in 1 hour, so each
+    call checks the cached token isn't expiring in the next 10 minutes, and
+    regenerates it if required.
 
     Local-dev fallback: we don't want devs to use the prod GitHub app locally, and
     we don't want a dev-only app installed on every org just to support manual testing.
@@ -266,40 +276,33 @@ class GitHubMultiOrgClient:
     so devs can generate one scoped to just the org(s) they need to test against and set
     it locally.
     """
+    if not (
+        os.environ.get("GITHUB_APP_CLIENT_ID")
+        and os.environ.get("GITHUB_APP_PRIVATE_KEY")
+    ):
+        return _dev_client_for_org(org)
 
-    max_token_age_seconds = 10 * 60
+    permissions = permissions or {"metadata": "read"}
+    cache_key = (org, tuple(sorted(permissions.items())))
+    client = _client_cache.get(cache_key)
 
-    def __init__(self, permissions: dict[str, str] | None = None):
-        self._github_clients = {}
-        self.permissions = permissions or {"metadata": "read"}
+    if client is None or client.seconds_to_token_expiry() < MAX_TOKEN_AGE_SECONDS:
+        installation_ids = repos_config.installation_ids()
+        assert org in installation_ids, f"installation id not configured for {org}"
+        installation_id = installation_ids[org]
+        client = create_github_client_for_org(installation_id, permissions)
+        _client_cache[cache_key] = client
 
-    def client_for_org(self, org):
-        if not (
-            os.environ.get("GITHUB_APP_CLIENT_ID")
-            and os.environ.get("GITHUB_APP_PRIVATE_KEY")
-        ):
-            return self._dev_client_for_org(org)
+    return _client_cache[cache_key]
 
-        client = self._github_clients.get(org)
-        if (
-            client is None
-            or client.seconds_to_token_expiry() < self.max_token_age_seconds
-        ):
-            installation_ids = repos_config.installation_ids()
-            assert org in installation_ids, f"installation id not configured for {org}"
-            installation_id = repos_config.installation_ids()[org]
-            self._github_clients[org] = github_client_for_org(
-                installation_id, self.permissions
-            )
-        return self._github_clients[org]
 
-    def _dev_client_for_org(self, org):
-        env_var = f"{org.replace('-', '_').upper()}_DEV_GITHUB_TOKEN"
-        token = os.environ.get(env_var)
-        assert token, (
-            f"GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY are not set, and no "
-            f"local-dev fallback token was found in {env_var}. Set the app "
-            f"credentials, or set {env_var} to a fine-grained PAT scoped to "
-            f"{org} for local testing."
-        )
-        return GitHubAPIClient(token)
+def _dev_client_for_org(org: str) -> GitHubAPIClient:
+    env_var = f"{org.replace('-', '_').upper()}_DEV_GITHUB_TOKEN"
+    token = os.environ.get(env_var)
+    assert token, (
+        f"GITHUB_APP_CLIENT_ID/GITHUB_APP_PRIVATE_KEY are not set, and no "
+        f"local-dev fallback token was found in {env_var}. Set the app "
+        f"credentials, or set {env_var} to a fine-grained PAT scoped to "
+        f"{org} for local testing."
+    )
+    return GitHubAPIClient(token)

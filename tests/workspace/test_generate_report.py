@@ -6,40 +6,23 @@ import pytest
 from workspace.report import generate_report
 
 
-@pytest.fixture(autouse=True)
-def reset_github_client_cache():
-    """`generate_report.github_client` is a module-level singleton; clear its
-    per-org client cache before and after each test so a real `client_for_org`
-    call in one test can't leak a cached client into another.
-    """
-    generate_report.github_client._github_clients = {}
-    yield
-    generate_report.github_client._github_clients = {}
-
-
 @pytest.fixture
 def mock_org_client(monkeypatch):
-    """Stub out installation-token fetching: `client_for_org` always returns
-    the same mock client, so tests can exercise `main()` without hitting the
-    installation-token endpoint.
+    """Stub out installation-token fetching: `get_client_for_org` always
+    returns the same mock client, so tests can exercise `main()` without
+    hitting the installation-token endpoint.
     """
     client = MagicMock()
     monkeypatch.setattr(
-        generate_report.github_client, "client_for_org", lambda org: client
+        generate_report, "get_client_for_org", lambda org, permissions=None: client
     )
     return client
 
 
-def test_github_client_requests_organization_projects_permission():
-    assert generate_report.github_client.permissions == {
-        "organization_projects": "read"
-    }
-
-
 def test_main_uses_client_for_configured_org():
-    # Exercises the real `client_for_org` (unlike `mock_org_client`), to check
-    # it routes to the "opensafely-core" org's installation and requests the
-    # module's permissions.
+    # Exercises the real `get_client_for_org` (unlike `mock_org_client`), to
+    # check it routes to the "opensafely-core" org's installation and requests
+    # the module's permissions.
     fake_client = MagicMock()
     fake_client.post_graphql.return_value = {
         "data": {
@@ -53,7 +36,7 @@ def test_main_uses_client_for_configured_org():
         }
     }
     with patch(
-        "workspace.utils.github_rest_api.github_client_for_org",
+        "workspace.utils.github_rest_api.create_github_client_for_org",
         return_value=fake_client,
     ) as mock_github_client_for_org:
         generate_report.main(13, ["Backlog"])

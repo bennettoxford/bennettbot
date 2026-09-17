@@ -22,7 +22,7 @@ from slack_sdk.models.blocks import (
     RichTextSectionElement,
 )
 
-from workspace.utils.github_rest_api import GitHubMultiOrgClient
+from workspace.utils.github_rest_api import get_client_for_org
 
 
 CODE = RichTextElementParts.TextStyle(code=True)
@@ -33,11 +33,9 @@ Emoji = RichTextElementParts.Emoji
 
 
 URL_PATTERN = "https://api.github.com/orgs/{org}/codespaces"
-# Requires the "Organization codespaces" and repo codespacecs app permission (read).
+# Requires the Organization "Organization codespaces" and Repo "Codespaces" app permissions (read).
 # https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2026-03-10#list-codespaces-for-the-organization
-github_client = GitHubMultiOrgClient(
-    permissions={"organization_codespaces": "read", "codespaces": "read"}
-)
+GITHUB_PERMISSIONS = {"organization_codespaces": "read", "codespaces": "read"}
 
 
 Codespace = collections.namedtuple(
@@ -117,7 +115,7 @@ def main(threshold_in_days):
     ]
 
     # Fetch info on org CodeSpaces at risk from GitHub API.
-    client = github_client.client_for_org(org)
+    client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
     records = client.get_paginated_json(
         URL_PATTERN.format(org=org), results_key="codespaces"
     )

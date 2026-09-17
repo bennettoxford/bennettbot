@@ -12,11 +12,14 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
-from workspace.utils.github_rest_api import GitHubMultiOrgClient
+from workspace.utils.github_rest_api import get_client_for_org
+
+
+# Requires the Repo "Actions" app permission (read).
+GITHUB_PERMISSIONS = {"actions": "read"}
 
 
 CACHE_PATH = settings.WRITEABLE_DIR / "workflows_cache.json"
-github_client = GitHubMultiOrgClient(permissions={"actions": "read"})
 EMOJI = {
     "success": ":large_green_circle:",
     "running": ":large_yellow_circle:",
@@ -92,7 +95,7 @@ class RepoWorkflowReporter:
 
     def get_github_client(self, org):
         # Split out so tests can mock this and avoid a real installation-token fetch.
-        return github_client.client_for_org(org)
+        return get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
 
     def _load_cache_for_repo(self) -> dict:
         cache = load_cache().get(self.repo_full_name, {})
