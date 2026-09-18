@@ -288,8 +288,8 @@ def get_client_for_org(
 
     if client is None or client.seconds_to_token_expiry() < MAX_TOKEN_AGE_SECONDS:
         installation_ids = repos_config.installation_ids()
-        assert org in installation_ids, f"installation id not configured for {org}"
-        installation_id = installation_ids[org]
+        installation_id = installation_ids.get(org)
+        assert installation_id, f"installation id not configured for {org}"
         client = create_github_client_for_org(installation_id, permissions)
         _client_cache[cache_key] = client
 

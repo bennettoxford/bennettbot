@@ -371,11 +371,20 @@ def test_get_client_for_org_uses_separate_clients_per_permissions():
     mock_client_for_org.assert_any_call(123, {"contents": "read"})
 
 
-def test_get_client_for_org_unknown_org_raises_error():
+@pytest.mark.parametrize(
+    "org_name",
+    [
+        # org not in test repo_config.yaml's installation_ids
+        "nonexistent-org",
+        # in test repo_config.yaml's installation_ids but not configured
+        "empty",
+    ],
+)
+def test_get_client_for_org_unknown_org_raises_error(org_name):
     with pytest.raises(
-        AssertionError, match="installation id not configured for nonexistent-org"
+        AssertionError, match=f"installation id not configured for {org_name}"
     ):
-        github_rest_api.get_client_for_org("nonexistent-org")
+        github_rest_api.get_client_for_org(org_name)
 
 
 @pytest.mark.parametrize(
