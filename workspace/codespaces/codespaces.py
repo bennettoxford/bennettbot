@@ -13,7 +13,6 @@ import argparse
 import collections
 import datetime
 import json
-import os
 
 from slack_sdk.models.blocks import (
     HeaderBlock,
@@ -23,7 +22,7 @@ from slack_sdk.models.blocks import (
     RichTextSectionElement,
 )
 
-from workspace.utils.github_rest_api import GitHubAPIClient
+from workspace.utils.github_rest_api import get_client_for_org
 
 
 CODE = RichTextElementParts.TextStyle(code=True)
@@ -34,15 +33,9 @@ Emoji = RichTextElementParts.Emoji
 
 
 URL_PATTERN = "https://api.github.com/orgs/{org}/codespaces"
-# The token can be a classic PAT with the admin:org scope or a fine-grained
-# token with "Codespaces" repository permissions set to "read" and
-# "Organization codespaces" organization permissions set to "read".
-# https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2022-11-28#list-codespaces-for-the-organization
-# Someone with admin permissions on the organization needs to create it.
-# For the opensafely org, created PATs should be stored in BitWarden.
-github_client = GitHubAPIClient(
-    os.environ["CODESPACES_GITHUB_API_TOKEN"], api_version="2022-11-28"
-)
+# Requires the Organization "Organization codespaces" and Repo "Codespaces" app permissions (read).
+# https://docs.github.com/en/rest/codespaces/organizations?apiVersion=2026-03-10#list-codespaces-for-the-organization
+GITHUB_PERMISSIONS = {"organization_codespaces": "read", "codespaces": "read"}
 
 
 Codespace = collections.namedtuple(
@@ -122,7 +115,8 @@ def main(threshold_in_days):
     ]
 
     # Fetch info on org CodeSpaces at risk from GitHub API.
-    records = github_client.get_paginated_json(
+    client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
+    records = client.get_paginated_json(
         URL_PATTERN.format(org=org), results_key="codespaces"
     )
     codespaces = (get_codespace(rec) for rec in records)

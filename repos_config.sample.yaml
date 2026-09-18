@@ -2,9 +2,10 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-09-03; this represents the state of production config at this time.
+# Updated: 2026-09-17; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
+# Note that App installation ids will need to be populated.
 
 teams:
   - Tech shared
@@ -23,6 +24,14 @@ shorthands:
     rex: Team REX
     presc: OpenPrescribing dev
     tech: Tech shared
+
+# GitHub App Installation IDs for each org; these are used to fetch the access tokens
+# used for calling the GitHub API.
+installation_ids:
+  bennettoxford: 162509629
+  ebmdatalab: 162510010
+  opensafely: 162510265
+  opensafely-core: 162510270
 
 # Repos grouped by their owning org; values are {repo_name: team}.
 repos:
@@ -55,12 +64,12 @@ repos:
     bennett.ox.ac.uk: Team REX
     metrics: Team REX
     team-manual: Team REX
-    sysadmin: Team RAP
   bennettoxford:
     bennettbot: Team RAP
     kissh: Team RAP
     openprescribing: OpenPrescribing dev
     openprescribing-v2: OpenPrescribing dev
+    sysadmin: Team RAP
     update-dependencies-action: Team RAP
 
 workflows:

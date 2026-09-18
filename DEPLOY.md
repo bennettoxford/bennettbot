@@ -132,6 +132,41 @@ $ dokku storage:mount bennettbot /home/bennettbot/:/home/bennettbot
 Add the bennettbot user's key to any servers that it requires access to
 (i.e. any jobs that run `fab` commands).
 
+### Configure GitHub app
+
+Calls to the GitHub API require a GitHub App, installed on each of our organisations.
+
+Using a GitHub App means that we make calls to the GitHub API using short-lived
+installation tokens that only have the specific permissions each call requires, and
+are not linked to any individual developer's account.
+
+#### Create the app
+
+If no app exists yet, follow the docs to [register an app to an organisation](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app).
+
+It does not require any special options, callbacks or webhook URL.
+
+#### Set permissions
+
+Add the following permissions:
+- Repo:
+    - Actions (read only)
+    - Codespaces (read only)
+    - Dependabot alerts (read only)
+- Org:
+    - Organization codespaces (read only)
+    - Projects (read only)
+
+#### Generate a private key
+Generate a private key and save the pem file.
+
+#### Install the app and get installation IDs
+Make the app public.
+
+Install the app into each org and find the installation ID for each (go to the org settings > third party apps, click on the app and look for the ID in the URL
+`https://github.com/organizations/<org>/settings/installations/<installation_id>`
+
+
 ### Configure app environment variables
 
 See also comments in `bennettbot/settings.py`.
@@ -151,10 +186,9 @@ OpenPrescribing, and are configured at https://github.com/bennettoxford/openpres
 - `GITHUB_WEBHOOK_SECRET`
 - `WEBHOOK_ORIGIN`
 
-The following environment variable allows the bot to authenticate with Github to retrieve
-project information.
-- `DATA_TEAM_GITHUB_API_TOKEN`: Note that this must be a classic PAT (not fine-grained)
-  and needs the `repo` and `read:project` scope
+GitHub App credentials:
+- `GITHUB_APP_CLIENT_ID`: set this to the App Client ID, found on the GitHub App page
+- `GITHUB_APP_PRIVATE_KEY`: set this the the private key generated for the app (the contents of the pem file)
 
 This is the path to credentials for the gdrive@ebmdatalab.iam.gserviceaccount.com
 service account:
@@ -190,6 +224,15 @@ $ dokku config:set bennettbot DB_PATH=/storage/bennettbot.db
 $ dokku config:set bennettbot FAB_WORKSPACE_DIR=/storage/workspace
 $ dokku config:set bennettbot BOT_CHECK_FILE=/storage/.bot_startup_check
 ```
+
+### Add the repo_config
+
+Make a copy of <repos_config.sample.yaml>, and save it to the mounted $WRITEABLE_DIR (i.e.
+if WRITEABLE_DIR is mounted from `/var/lib/dokku/data/storage/bennettbot/` on the host,
+put this file at `/var/lib/dokku/data/storage/bennettbot/repos_config.yaml`.
+
+Update the repo_config.yaml to add the [installation IDs for each organisation](#install-the-app-and-get-installation-ids).
+
 
 ### Map port 9999 for incoming github hooks
 https://dokku.com/docs/networking/port-management/

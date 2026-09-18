@@ -20,6 +20,10 @@ def load_config() -> dict:
     return yaml.safe_load(CONFIG_PATH.read_text())
 
 
+def installation_ids() -> dict:
+    return load_config()["installation_ids"]
+
+
 def teams() -> list[str]:
     return load_config()["teams"]
 

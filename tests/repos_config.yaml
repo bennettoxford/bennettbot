@@ -20,6 +20,13 @@ shorthands:
     presc: Team Prescribosaurus
     tech: Tech shared
 
+installation_ids:
+  opensafely-core: 123
+  ebmdatalab: 456
+  opensafely: 789
+  # for testing an org without a configured installation ID
+  empty:
+
 repos:
   opensafely-core:
     airlock: Team RAP

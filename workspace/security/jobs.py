@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 
 from bennettbot import settings
 from workspace.utils import repos_config as config
@@ -11,12 +10,11 @@ from workspace.utils.blocks import (
     get_header_block,
     get_text_block,
 )
-from workspace.utils.github_rest_api import GitHubAPIClient
+from workspace.utils.github_rest_api import get_client_for_org
 
 
-# Requires `repo` scope (only needs `security_events` for public repos, but full
-# `repo` for private-repo access).
-github_client = GitHubAPIClient(os.environ["DATA_TEAM_GITHUB_API_TOKEN"])
+# Requires the Repo "Dependabot alerts" app permission (read).
+GITHUB_PERMISSIONS = {"vulnerability_alerts": "read"}
 
 # Local cache of the most recent Dependabot response per (repo, severities),
 # keyed by `"<repo>|<sev1>,<sev2>,…"`. Each entry stores the first-page ETag
@@ -74,11 +72,17 @@ class RepoAlertsReporter:
             repo_full_name: "org/repo" string (e.g. "opensafely-core/airlock").
             severities: severities to fetch and report on. Defaults to critical/high.
         """
+        org, _ = repo_full_name.split("/")
+        self.github_client = self.get_github_client(org)
         self.repo_full_name = repo_full_name
         self.severities = severities or DEFAULT_SEVERITIES
         self.base_api_url = f"https://api.github.com/repos/{repo_full_name}/"
         self.dependabot_link = get_dependabot_alerts_link(repo_full_name)
         self.alerts = self.get_open_alerts()
+
+    def get_github_client(self, org: str):
+        # Split out so tests can mock this and avoid a real installation-token fetch.
+        return get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
 
     def _cache_key(self) -> str:
         # Severities are part of the key because the API filters server-side
@@ -98,7 +102,7 @@ class RepoAlertsReporter:
             "severity": ",".join(self.severities),
             "per_page": 100,
         }
-        response = github_client.get_paginated_json(
+        response = self.github_client.get_paginated_json(
             url, params=params, etag=cached.get("etag")
         )
         if response.not_modified:

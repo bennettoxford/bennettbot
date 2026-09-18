@@ -8,7 +8,7 @@ from mocket import Mocketizer, mocketize
 from mocket.mockhttp import Entry
 
 from workspace.security import jobs
-from workspace.utils.github_rest_api import PagedResponse
+from workspace.utils.github_rest_api import GitHubAPIClient, PagedResponse
 
 
 ALERTS_FIXTURE_PATH = Path("tests/workspace/dependabot_alerts.json")
@@ -19,6 +19,20 @@ ALERTS_URL = "https://api.github.com/repos/opensafely-core/airlock/dependabot/al
 def isolated_cache(tmp_path, monkeypatch):
     """Each test gets its own cache file so cache state doesn't bleed between tests."""
     monkeypatch.setattr(jobs, "CACHE_PATH", tmp_path / "security_cache.json")
+
+
+@pytest.fixture
+def mock_org_client(monkeypatch):
+    """Stub out installation-token fetching: `get_github_client` always returns
+    the same client (no real app auth), so tests can exercise
+    `RepoAlertsReporter` without hitting the installation-token endpoint, and
+    can patch `get_paginated_json` on the returned client directly.
+    """
+    client = GitHubAPIClient("test-token")
+    monkeypatch.setattr(
+        jobs.RepoAlertsReporter, "get_github_client", lambda self, org: client
+    )
+    return client
 
 
 @pytest.fixture
@@ -109,13 +123,26 @@ def use_mock_results(
     return decorator
 
 
-def test_get_open_alerts_and_counts(mock_alerts_endpoint):
+def test_get_open_alerts_and_counts(mock_alerts_endpoint, mock_org_client):
     reporter = jobs.RepoAlertsReporter("opensafely-core/airlock")
     assert len(reporter.alerts) == 5
     assert reporter.get_counts() == {"critical": 2, "high": 3}
 
 
-def test_get_counts_skips_unknown_severity():
+def test_reporter_get_github_client_routes_to_repos_org(mock_alerts_endpoint):
+    # Exercises the real `get_github_client`, unlike `mock_org_client`, to check
+    # it delegates to `get_client_for_org` for the repo's org, requesting the
+    # `vulnerability_alerts` permission Dependabot alerts need (and no more).
+    with patch.object(
+        jobs, "get_client_for_org", return_value=GitHubAPIClient("test-token")
+    ) as mock_get_client_for_org:
+        jobs.RepoAlertsReporter("opensafely-core/airlock")
+    mock_get_client_for_org.assert_called_once_with(
+        "opensafely-core", permissions={"vulnerability_alerts": "read"}
+    )
+
+
+def test_get_counts_skips_unknown_severity(mock_org_client):
     with patch.object(
         jobs.RepoAlertsReporter,
         "get_open_alerts",
@@ -130,7 +157,7 @@ def test_get_counts_skips_unknown_severity():
 
 
 @mocketize(strict_mode=True)
-def test_get_counts_no_alerts():
+def test_get_counts_no_alerts(mock_org_client):
     Entry.single_register(
         Entry.GET,
         ALERTS_URL,
@@ -141,7 +168,7 @@ def test_get_counts_no_alerts():
     assert reporter.get_counts() == {"critical": 0, "high": 0}
 
 
-def test_cache_hit_uses_cached_alerts():
+def test_cache_hit_uses_cached_alerts(mock_org_client):
     # Pre-populate the cache; the github client returns a not_modified
     # response to simulate a 304 from the server.
     cached_alerts = [{"security_advisory": {"severity": "critical"}}]
@@ -154,7 +181,7 @@ def test_cache_hit_uses_cached_alerts():
         }
     )
     with patch.object(
-        jobs.github_client,
+        mock_org_client,
         "get_paginated_json",
         return_value=PagedResponse(
             records=iter([]), etag="old-etag", not_modified=True
@@ -166,10 +193,10 @@ def test_cache_hit_uses_cached_alerts():
     assert reporter.alerts == cached_alerts
 
 
-def test_cache_miss_stores_response_and_etag():
+def test_cache_miss_stores_response_and_etag(mock_org_client):
     fresh_alerts = [{"security_advisory": {"severity": "high"}}]
     with patch.object(
-        jobs.github_client,
+        mock_org_client,
         "get_paginated_json",
         return_value=PagedResponse(records=iter(fresh_alerts), etag="new-etag"),
     ):
@@ -183,7 +210,7 @@ def test_cache_miss_stores_response_and_etag():
     }
 
 
-def test_cache_key_distinguishes_severities():
+def test_cache_key_distinguishes_severities(mock_org_client):
     # A cache entry for critical/high must not be served for an
     # all-severities request: the API filter is different so the cached
     # alerts list would be missing entries.
@@ -196,7 +223,7 @@ def test_cache_key_distinguishes_severities():
         }
     )
     with patch.object(
-        jobs.github_client,
+        mock_org_client,
         "get_paginated_json",
         return_value=PagedResponse(records=iter([]), etag="all-sev-etag"),
     ) as mock_get:
@@ -207,7 +234,7 @@ def test_cache_key_distinguishes_severities():
     assert mock_get.call_args.kwargs["etag"] is None
 
 
-def test_report_with_alerts(mock_alerts_endpoint):
+def test_report_with_alerts(mock_alerts_endpoint, mock_org_client):
     reporter = jobs.RepoAlertsReporter("opensafely-core/airlock")
     blocks = reporter.report_blocks()
     assert blocks == [
@@ -236,7 +263,7 @@ def test_report_with_alerts(mock_alerts_endpoint):
 
 
 @mocketize(strict_mode=True)
-def test_report_no_alerts():
+def test_report_no_alerts(mock_org_client):
     Entry.single_register(
         Entry.GET,
         ALERTS_URL,

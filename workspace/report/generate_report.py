@@ -1,36 +1,23 @@
 import argparse
 import json
-import os
-
-import requests
 
 from workspace.utils import repos_config
 from workspace.utils.argparse import SplitCommaSeparatedString
 from workspace.utils.blocks import get_basic_header_and_text_blocks
+from workspace.utils.github_rest_api import get_client_for_org
 from workspace.utils.people import People
 
 
-URL = "https://api.github.com/graphql"
-TOKEN = os.environ["DATA_TEAM_GITHUB_API_TOKEN"]  # requires "read:project" and "repo"
-HEADERS = {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    "Authorization": f"Bearer {TOKEN}",
-    "GraphQL-Features": "projects_next_graphql",
-}
 ORG_NAME = "opensafely-core"
-
-
-def post_request(payload):  # pragma: no cover
-    rsp = requests.post(URL, headers=HEADERS, json=payload)
-    rsp.raise_for_status()
-    return rsp.json()
+# Requires the Organization "Organization projects" app permission (read).
+GITHUB_PERMISSIONS = {"organization_projects": "read"}
 
 
 def main(project_num, statuses, org=ORG_NAME):
     org = repos_config.org_shorthands().get(org, org)
-    project_id = get_project_id(int(project_num), org)
-    cards = get_project_cards(project_id, org)
+    client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
+    project_id = get_project_id(client, int(project_num), org)
+    cards = get_project_cards(client, project_id, org)
     tickets_by_status = {status: [] for status in statuses}
 
     for card in cards:  # pragma: no cover
@@ -63,7 +50,7 @@ def main(project_num, statuses, org=ORG_NAME):
     return json.dumps(report_output)
 
 
-def get_project_id(project_num, org):
+def get_project_id(client, project_num, org):
     query = """
     query projectId($org_name: String!, $project_num: Int!) {
       organization(login: $org_name) {
@@ -79,12 +66,11 @@ def get_project_id(project_num, org):
         "project_num": project_num,
     }
 
-    payload = {"query": query, "variables": variables}
-    rsp = post_request(payload)
+    rsp = client.post_graphql(query, variables)
     return rsp["data"]["organization"]["projectV2"]["id"]
 
 
-def get_project_cards(project_id, org):
+def get_project_cards(client, project_id, org):
     query = """
     query projectCards($project_id: ID!, $cursor: String) {
       node(id: $project_id) {
@@ -145,8 +131,7 @@ def get_project_cards(project_id, org):
     project_data = []
     while True:
         variables = {"project_id": project_id, "cursor": cursor, "org_name": org}
-        payload = {"query": query, "variables": variables}
-        data = post_request(payload)
+        data = client.post_graphql(query, variables)
         node_data = data["data"]["node"]["items"]
         project_data.extend(node_data["nodes"])
         if not node_data["pageInfo"]["hasNextPage"]:

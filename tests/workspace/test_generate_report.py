@@ -1,69 +1,108 @@
 import json
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from workspace.report import generate_report
 
 
-def test_generate_report():
-    def mock_post_request(payload):
-        return {
-            "data": {
-                "organization": {"projectV2": {"id": 1}},
-                "node": {
-                    "items": {
-                        "nodes": [
-                            {
-                                "content": {
-                                    "title": "Card 1",
-                                    "bodyUrl": "http://card1",
-                                    "assignees": {"nodes": []},
-                                },
-                                "fieldValues": {
-                                    "nodes": [
-                                        {},
-                                        {
-                                            "name": "Under Review",
-                                            "field": {"name": "Status"},
-                                        },
-                                    ]
-                                },
-                            },
-                            {
-                                "content": {
-                                    "title": "Card 2",
-                                    "assignees": {"nodes": []},
-                                },
-                                "fieldValues": {
-                                    "nodes": [
-                                        {
-                                            "name": "In Progress",
-                                            "field": {"name": "Status"},
-                                        },
-                                        {},
-                                    ]
-                                },
-                            },
-                            {
-                                "content": {
-                                    "title": "Card 3",
-                                    "assignees": {"nodes": []},
-                                },
-                                "fieldValues": {
-                                    "nodes": [
-                                        {
-                                            "name": "Blocked",
-                                            "field": {"name": "Status"},
-                                        }
-                                    ]
-                                },
-                            },
-                        ],
-                        "pageInfo": {"hasNextPage": False, "endCursor": "abc"},
-                    }
-                },
-            }
-        }
+@pytest.fixture
+def mock_org_client(monkeypatch):
+    """Stub out installation-token fetching: `get_client_for_org` always
+    returns the same mock client, so tests can exercise `main()` without
+    hitting the installation-token endpoint.
+    """
+    client = MagicMock()
+    monkeypatch.setattr(
+        generate_report, "get_client_for_org", lambda org, permissions=None: client
+    )
+    return client
 
-    generate_report.post_request = mock_post_request
+
+def test_main_uses_client_for_configured_org():
+    # Exercises the real `get_client_for_org` (unlike `mock_org_client`), to
+    # check it routes to the "opensafely-core" org's installation and requests
+    # the module's permissions.
+    fake_client = MagicMock()
+    fake_client.post_graphql.return_value = {
+        "data": {
+            "organization": {"projectV2": {"id": 1}},
+            "node": {
+                "items": {
+                    "nodes": [],
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                }
+            },
+        }
+    }
+    with patch(
+        "workspace.utils.github_rest_api.create_github_client_for_org",
+        return_value=fake_client,
+    ) as mock_github_client_for_org:
+        generate_report.main(13, ["Backlog"])
+    mock_github_client_for_org.assert_called_once_with(
+        123, {"organization_projects": "read"}
+    )
+
+
+def test_generate_report(mock_org_client):
+    mock_org_client.post_graphql.return_value = {
+        "data": {
+            "organization": {"projectV2": {"id": 1}},
+            "node": {
+                "items": {
+                    "nodes": [
+                        {
+                            "content": {
+                                "title": "Card 1",
+                                "bodyUrl": "http://card1",
+                                "assignees": {"nodes": []},
+                            },
+                            "fieldValues": {
+                                "nodes": [
+                                    {},
+                                    {
+                                        "name": "Under Review",
+                                        "field": {"name": "Status"},
+                                    },
+                                ]
+                            },
+                        },
+                        {
+                            "content": {
+                                "title": "Card 2",
+                                "assignees": {"nodes": []},
+                            },
+                            "fieldValues": {
+                                "nodes": [
+                                    {
+                                        "name": "In Progress",
+                                        "field": {"name": "Status"},
+                                    },
+                                    {},
+                                ]
+                            },
+                        },
+                        {
+                            "content": {
+                                "title": "Card 3",
+                                "assignees": {"nodes": []},
+                            },
+                            "fieldValues": {
+                                "nodes": [
+                                    {
+                                        "name": "Blocked",
+                                        "field": {"name": "Status"},
+                                    }
+                                ]
+                            },
+                        },
+                    ],
+                    "pageInfo": {"hasNextPage": False, "endCursor": "abc"},
+                }
+            },
+        }
+    }
     response = [
         {
             "type": "header",
@@ -97,10 +136,10 @@ def test_generate_report():
     assert generate_report.main(13, statuses) == json.dumps(response)
 
 
-def test_generate_report_with_custom_org():
-    def mock_post_request(payload):
+def test_generate_report_with_custom_org(mock_org_client):
+    def fake_post_graphql(query, variables):
         # Verify the org parameter is passed to the query
-        assert payload["variables"]["org_name"] == "custom-org"
+        assert variables["org_name"] == "custom-org"
         return {
             "data": {
                 "organization": {"projectV2": {"id": 1}},
@@ -113,7 +152,7 @@ def test_generate_report_with_custom_org():
             }
         }
 
-    generate_report.post_request = mock_post_request
+    mock_org_client.post_graphql.side_effect = fake_post_graphql
 
     response = [
         {
@@ -137,21 +176,18 @@ def test_generate_report_with_custom_org():
     )
 
 
-def test_generate_report_no_issues():
-    def mock_post_request(payload):
-        return {
-            "data": {
-                "organization": {"projectV2": {"id": 1}},
-                "node": {
-                    "items": {
-                        "nodes": "",
-                        "pageInfo": {"hasNextPage": False, "endCursor": "abc"},
-                    }
-                },
-            }
+def test_generate_report_no_issues(mock_org_client):
+    mock_org_client.post_graphql.return_value = {
+        "data": {
+            "organization": {"projectV2": {"id": 1}},
+            "node": {
+                "items": {
+                    "nodes": "",
+                    "pageInfo": {"hasNextPage": False, "endCursor": "abc"},
+                }
+            },
         }
-
-    generate_report.post_request = mock_post_request
+    }
 
     response = [
         {

@@ -84,6 +84,36 @@ If you don't have the Bitwarden CLI already installed, the `local-setup.sh`
 will prompt you to [install it](https://bitwarden.com/help/cli/#download-and-install).
 
 
+### GitHub API calls
+
+If you are manually testing commands that call the GitHub API, you will need to
+create and add some local environment variables.
+
+In production, we use a [GitHub App](DEPLOY.md#configure-github-app) to make API calls.
+This has to be installed on each organisation, so for local development, we can fall
+back to using locally configured fine-grained tokens if required. The comamnd will
+error and print a message that tells you which specific environment variable is missing.
+
+E.g. if you want to call the security report jobs on repos in the `bennettoxford` org, you
+can create a fine-grained token for the `bennettoxford` org, with the "Dependabot alerts"
+read-only permission, and set it to `BENNETTOXFORD_DEV_GITHUB_TOKEN`.
+
+Permissions needed for currently configured jobs:
+- security:
+    - Repo: Dependabot alerts, readonly
+- workflows:
+    - Repo: Actions, readonly
+- reports (project board reports):
+    - Organization: Projects, readonly
+- codespaces:
+    - Organization: Organization Codespaces, readonly
+    - Repo: Codespaces, readonly
+
+If you are adding a new job that uses the GitHub API, you can check the permissions an
+endpoint requires, by calling it with a app or finegrained token that is valid for the org
+(it doesn't need to have the correct permissions), and checking the X-Accepted-GitHub-Permissions header returned.
+
+
 ### Join the test slack workspace
 
 Join the test Slack workspace at [bennetttest.slack.com](https://bennetttest.slack.com).

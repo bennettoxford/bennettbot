@@ -8,6 +8,7 @@ import pytest
 from mocket import Mocket, Mocketizer, mocketize
 from mocket.mockhttp import Entry
 
+from workspace.utils.github_rest_api import GitHubAPIClient
 from workspace.workflows import jobs
 
 
@@ -76,7 +77,20 @@ def cache_path(tmp_path):
 
 
 @pytest.fixture
-def mock_airlock_reporter():
+def mock_org_client(monkeypatch):
+    """Stub out installation-token fetching: `get_github_client` always returns
+    the same client (no real app auth), so tests can exercise
+    `RepoWorkflowReporter` without hitting the installation-token endpoint.
+    """
+    client = GitHubAPIClient("test-token")
+    monkeypatch.setattr(
+        jobs.RepoWorkflowReporter, "get_github_client", lambda self, org: client
+    )
+    return client
+
+
+@pytest.fixture
+def mock_airlock_reporter(mock_org_client):
     # Workflow IDs and names
     Entry.single_register(
         Entry.GET,
@@ -100,6 +114,10 @@ def mock_airlock_reporter():
 
 class MockRepoWorkflowReporter(jobs.RepoWorkflowReporter):
     # A mock class to allow us to vary the conclusions returned by get_latest_conclusions.
+
+    def get_github_client(self, org):
+        # Not used; HTTP calls are mocked via get_workflows/get_runs below.
+        return None
 
     def get_workflows(self) -> dict:
         return WORKFLOWS_MAIN
@@ -393,7 +411,7 @@ def test_catch_unhandled_error():
 
 
 @mocketize(strict_mode=True)
-def test_get_workflows():
+def test_get_workflows(mock_org_client):
     # get_workflows is called in __init__, so create the instance here
     Entry.single_register(
         Entry.GET,
@@ -404,6 +422,22 @@ def test_get_workflows():
     reporter = jobs.RepoWorkflowReporter("opensafely-core/airlock")
     assert len(reporter.workflows) == 5
     assert reporter.workflows == WORKFLOWS_MAIN
+
+
+def test_reporter_get_github_client_routes_to_repos_org():
+    # Exercises the real `get_github_client`, unlike `mock_org_client`, to check
+    # it delegates to `get_client_for_org` for the repo's org, requesting the
+    # `actions` permission workflows/runs need (and no more).
+    with (
+        patch.object(
+            jobs, "get_client_for_org", return_value=GitHubAPIClient("test-token")
+        ) as mock_get_client_for_org,
+        patch.object(jobs.RepoWorkflowReporter, "get_workflows", return_value={}),
+    ):
+        jobs.RepoWorkflowReporter("opensafely-core/airlock")
+    mock_get_client_for_org.assert_called_once_with(
+        "opensafely-core", permissions={"actions": "read"}
+    )
 
 
 def test_cache_file_does_not_exist(mock_airlock_reporter, cache_path):
@@ -644,7 +678,7 @@ def test_get_summary_block(conclusion, emoji_link):
     ],
 )
 @patch("workspace.workflows.jobs.RepoWorkflowReporter.get_latest_conclusions")
-def test_main_show_repo(mock_conclusions, conclusion, reported, emoji):
+def test_main_show_repo(mock_conclusions, conclusion, reported, emoji, mock_org_client):
     # Call main for a single repo (opensafely-core/airlock)
     # No need to mock CACHE_PATH since get_latest_conclusions is mocked
     Entry.single_register(
