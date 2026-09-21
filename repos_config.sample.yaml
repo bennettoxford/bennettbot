@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-09-17; this represents the state of production config at this time.
+# Updated: 2026-09-21; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 # Note that App installation ids will need to be populated.
@@ -28,10 +28,10 @@ shorthands:
 # GitHub App Installation IDs for each org; these are used to fetch the access tokens
 # used for calling the GitHub API.
 installation_ids:
-  bennettoxford: 162509629
-  ebmdatalab: 162510010
-  opensafely: 162510265
-  opensafely-core: 162510270
+  bennettoxford:
+  ebmdatalab:
+  opensafely:
+  opensafely-core:
 
 # Repos grouped by their owning org; values are {repo_name: team}.
 repos:
@@ -57,7 +57,6 @@ repos:
     sqlrunner: Team RAP
     stata-docker: Team RAP
     sysadmin: Team RAP
-    tpp-database-utils: Team RAP
   opensafely:
     documentation: Tech shared
   ebmdatalab:
