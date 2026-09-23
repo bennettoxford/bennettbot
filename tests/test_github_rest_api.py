@@ -371,20 +371,28 @@ def test_get_client_for_org_uses_separate_clients_per_permissions():
     mock_client_for_org.assert_any_call(123, {"contents": "read"})
 
 
-@pytest.mark.parametrize(
-    "org_name",
-    [
-        # org not in test repo_config.yaml's installation_ids
-        "nonexistent-org",
-        # in test repo_config.yaml's installation_ids but not configured
-        "empty",
-    ],
-)
-def test_get_client_for_org_unknown_org_raises_error(org_name):
+def test_get_client_for_org_unknown_org_raises_error():
+    # "nonexistent-org" isn't in test repos_config.yaml's installation_ids at all.
     with pytest.raises(
-        AssertionError, match=f"installation id not configured for {org_name}"
+        AssertionError, match="installation id not configured for nonexistent-org"
     ):
-        github_rest_api.get_client_for_org(org_name)
+        github_rest_api.get_client_for_org("nonexistent-org")
+
+
+def test_get_client_for_org_configured_but_empty_raises_error():
+    # An org can be present in installation_ids but not yet have an app
+    # installed for it (a falsy value) - mock this rather than relying on a
+    # fixture org in tests/repos_config.yaml, since we otherwise assume every
+    # configured org is properly set up.
+    with patch.object(
+        github_rest_api.repos_config,
+        "installation_ids",
+        return_value={"some-org": None},
+    ):
+        with pytest.raises(
+            AssertionError, match="installation id not configured for some-org"
+        ):
+            github_rest_api.get_client_for_org("some-org")
 
 
 @pytest.mark.parametrize(

@@ -9,15 +9,21 @@ from workspace.utils.people import People
 
 
 ORG_NAME = "opensafely-core"
-# Requires the Organization "Organization projects" app permission (read).
-GITHUB_PERMISSIONS = {"organization_projects": "read"}
+# Requires the Organization "Organization projects" app permission (read)
+# and Repo Issues and Pull Requests permissions (for reading the content
+# of project board items from private repos).
+GITHUB_PERMISSIONS = {
+    "organization_projects": "read",
+    "issues": "read",
+    "pull_requests": "read",
+}
 
 
 def main(project_num, statuses, org=ORG_NAME):
     org = repos_config.org_shorthands().get(org, org)
     client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
     project_id = get_project_id(client, int(project_num), org)
-    cards = get_project_cards(client, project_id, org)
+    cards, omitted_count = get_project_cards(client, project_id, org)
     tickets_by_status = {status: [] for status in statuses}
 
     for card in cards:  # pragma: no cover
@@ -46,6 +52,21 @@ def main(project_num, statuses, org=ORG_NAME):
                     },
                 ]
             )
+
+    if omitted_count:
+        report_output.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"_{omitted_count} item(s) omitted: the GitHub app doesn't have "
+                        "permission to read their content (ask an admin to grant "
+                        "the Issues/Pull requests permissions)._"
+                    ),
+                },
+            }
+        )
 
     return json.dumps(report_output)
 
@@ -77,6 +98,8 @@ def get_project_cards(client, project_id, org):
         ... on ProjectV2 {
           items(first: 100, after: $cursor) {
             nodes {
+              id
+              type
               fieldValues(last: 100) {
                 nodes {
                   ... on ProjectV2ItemFieldSingleSelectValue {
@@ -139,10 +162,16 @@ def get_project_cards(client, project_id, org):
         # update the cursor we pass into the GraphQL query
         cursor = node_data["pageInfo"]["endCursor"]  # pragma: no cover
 
-    return sorted(
-        project_data,
-        key=lambda card: card["content"]["title"],
-    )  # pragma: no cover
+    # If the token can't read the content of an item, it's in the project's
+    # org but the app hasn't been given the right permissions on the repo.
+    # GitHub reports this as `type: REDACTED` with null `content`.
+    cards = [card for card in project_data if card["type"] != "REDACTED"]
+    omitted_count = len(project_data) - len(cards)
+
+    return (
+        sorted(cards, key=lambda card: card["content"]["title"]),
+        omitted_count,
+    )
 
 
 def get_status_and_summary(card):  # pragma: no cover
