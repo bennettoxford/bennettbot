@@ -240,12 +240,11 @@ def test_generate_report_no_issues(mock_org_client):
 
 # Same-org items missing repo permissions.
 #
-# The token used to fetch the project can see an item exists (it's in the
-# project's own `items` connection) but can't read its content, because that
-# repo's org hasn't granted the Issues/Pull requests permissions this needs.
-# GitHub reports this as `type: REDACTED` with `content: None`.
-
-
+# A token may be able to see that items exist but may be unable to read
+# their content. GitHub's docs say that this will be reported with
+# `type: REDACTED` with `content: None`, although it seems it's usually
+# `type: ISSUE` with `content: None`; see comment in generate_report.py
+# get_project_cards() for more details
 def test_get_project_cards_omits_same_org_redacted_items(mock_org_client):
     mock_org_client.post_graphql.return_value = {
         "data": {
@@ -267,6 +266,12 @@ def test_get_project_cards_omits_same_org_redacted_items(mock_org_client):
                             },
                             "fieldValues": {"nodes": []},
                         },
+                        {
+                            "id": "item3",
+                            "type": "ISSUE",
+                            "content": None,
+                            "fieldValues": {"nodes": []},
+                        },
                     ],
                     "pageInfo": {"hasNextPage": False, "endCursor": None},
                 }
@@ -277,7 +282,7 @@ def test_get_project_cards_omits_same_org_redacted_items(mock_org_client):
     cards, omitted_count = generate_report.get_project_cards(
         mock_org_client, project_id="proj1", org="opensafely-core"
     )
-    assert omitted_count == 1
+    assert omitted_count == 2
     assert [card["content"]["title"] for card in cards] == ["Same-org card"]
 
 
