@@ -9,15 +9,21 @@ from workspace.utils.people import People
 
 
 ORG_NAME = "opensafely-core"
-# Requires the Organization "Organization projects" app permission (read).
-GITHUB_PERMISSIONS = {"organization_projects": "read"}
+# Requires the Organization "Organization projects" app permission (read)
+# and Repo Issues and Pull Requests permissions (for reading the content
+# of project board items from private repos).
+GITHUB_PERMISSIONS = {
+    "organization_projects": "read",
+    "issues": "read",
+    "pull_requests": "read",
+}
 
 
 def main(project_num, statuses, org=ORG_NAME):
     org = repos_config.org_shorthands().get(org, org)
     client = get_client_for_org(org, permissions=GITHUB_PERMISSIONS)
     project_id = get_project_id(client, int(project_num), org)
-    cards = get_project_cards(client, project_id, org)
+    cards, omitted_count = get_project_cards(client, project_id, org)
     tickets_by_status = {status: [] for status in statuses}
 
     for card in cards:  # pragma: no cover
@@ -46,6 +52,33 @@ def main(project_num, statuses, org=ORG_NAME):
                     },
                 ]
             )
+
+    if omitted_count:
+        report_output.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"_{omitted_count} item(s) omitted: the GitHub token doesn't have "
+                        "permission to read their content._"
+                    ),
+                },
+            }
+        )
+
+    report_output.append(
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    f"_Note: items on private repos that are not in {org} are not "
+                    "displayed in this report._"
+                ),
+            },
+        }
+    )
 
     return json.dumps(report_output)
 
@@ -77,6 +110,8 @@ def get_project_cards(client, project_id, org):
         ... on ProjectV2 {
           items(first: 100, after: $cursor) {
             nodes {
+              id
+              type
               fieldValues(last: 100) {
                 nodes {
                   ... on ProjectV2ItemFieldSingleSelectValue {
@@ -138,11 +173,25 @@ def get_project_cards(client, project_id, org):
             break
         # update the cursor we pass into the GraphQL query
         cursor = node_data["pageInfo"]["endCursor"]  # pragma: no cover
+    # If the token can't read the content of an item, it's in the project's
+    # org but the app/user hasn't been given the right permissions on the repo.
+    # Note (rebkwok 2026-09-28): according to the API docs, GitHub reports this
+    # as `type: REDACTED` with null `content`; I haven't seen `type: REDACTED`
+    # actually happen in the wild, and the behaviour appears for non-permitted
+    # items is different with app installation tokens and finegrained PATs.
+    # With an app installation token (i.e. in prod), items without permission are
+    # omitted entirely.
+    # With a finegrained user PAT without permission, they are returned with issue
+    # type ISSUE and null content (assuming the user who owns the token has permission
+    # to see the items, the org-scoped token is allowed to know that the item exists,
+    # but not to view its content.)
+    cards = [card for card in project_data if card["content"] is not None]
+    omitted_count = len(project_data) - len(cards)
 
-    return sorted(
-        project_data,
-        key=lambda card: card["content"]["title"],
-    )  # pragma: no cover
+    return (
+        sorted(cards, key=lambda card: card["content"]["title"]),
+        omitted_count,
+    )
 
 
 def get_status_and_summary(card):  # pragma: no cover

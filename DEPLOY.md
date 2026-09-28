@@ -153,6 +153,8 @@ Add the following permissions:
     - Actions (read only)
     - Codespaces (read only)
     - Dependabot alerts (read only)
+    - Issues (read only)
+    - Pull requests (read only)
 - Org:
     - Organization codespaces (read only)
     - Projects (read only)
