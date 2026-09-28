@@ -104,6 +104,7 @@ Permissions needed for currently configured jobs:
 - workflows:
     - Repo: Actions, readonly
 - reports (project board reports):
+    - Repo: Issues (read only), Pull requests (read only)
     - Organization: Projects, readonly
 - codespaces:
     - Organization: Organization Codespaces, readonly
