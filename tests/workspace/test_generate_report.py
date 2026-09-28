@@ -137,6 +137,13 @@ def test_generate_report(mock_org_client):
         {"type": "divider"},
         {"type": "section", "text": {"type": "mrkdwn", "text": "*In Progress*"}},
         {"type": "section", "text": {"type": "mrkdwn", "text": "• Card 2\n"}},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "_Note: items on private repos that are not in opensafely-core are not displayed in this report._",
+            },
+        },
     ]
 
     statuses = ["Under Review", "Blocked", "In Progress"]
@@ -176,6 +183,13 @@ def test_generate_report_with_custom_org(mock_org_client):
                 "text": "<https://github.com/orgs/custom-org/projects/99/views/1|View board>",
             },
         },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "_Note: items on private repos that are not in custom-org are not displayed in this report._",
+            },
+        },
     ]
 
     assert generate_report.main(99, ["Backlog"], org="custom-org") == json.dumps(
@@ -209,6 +223,13 @@ def test_generate_report_no_issues(mock_org_client):
             "text": {
                 "type": "mrkdwn",
                 "text": "<https://github.com/orgs/opensafely-core/projects/13/views/1|View board>",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "_Note: items on private repos that are not in opensafely-core are not displayed in this report._",
             },
         },
     ]
@@ -289,10 +310,6 @@ def test_main_appends_omitted_note_for_same_org_permission_gap(mock_org_client):
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            "text": (
-                "_1 item(s) omitted: the GitHub app doesn't have permission to "
-                "read their content (ask an admin to grant the Issues/Pull "
-                "requests permissions)._"
-            ),
+            "text": "_Note: items on private repos that are not in opensafely-core are not displayed in this report._",
         },
     }

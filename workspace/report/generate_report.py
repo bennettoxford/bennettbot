@@ -60,13 +60,25 @@ def main(project_num, statuses, org=ORG_NAME):
                 "text": {
                     "type": "mrkdwn",
                     "text": (
-                        f"_{omitted_count} item(s) omitted: the GitHub app doesn't have "
-                        "permission to read their content (ask an admin to grant "
-                        "the Issues/Pull requests permissions)._"
+                        f"_{omitted_count} item(s) omitted: the GitHub token doesn't have "
+                        "permission to read their content._"
                     ),
                 },
             }
         )
+
+    report_output.append(
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    f"_Note: items on private repos that are not in {org} are not "
+                    "displayed in this report._"
+                ),
+            },
+        }
+    )
 
     return json.dumps(report_output)
 
@@ -161,11 +173,19 @@ def get_project_cards(client, project_id, org):
             break
         # update the cursor we pass into the GraphQL query
         cursor = node_data["pageInfo"]["endCursor"]  # pragma: no cover
-
     # If the token can't read the content of an item, it's in the project's
-    # org but the app hasn't been given the right permissions on the repo.
-    # GitHub reports this as `type: REDACTED` with null `content`.
-    cards = [card for card in project_data if card["type"] != "REDACTED"]
+    # org but the app/user hasn't been given the right permissions on the repo.
+    # Note (rebkwok 2026-09-28): according to the API docs, GitHub reports this
+    # as `type: REDACTED` with null `content`; I haven't seen `type: REDACTED`
+    # actually happen in the wild, and the behaviour appears for non-permitted
+    # items is different with app installation tokens and finegrained PATs.
+    # With an app installation token (i.e. in prod), items without permission are
+    # omitted entirely.
+    # With a finegrained user PAT without permission, they are returned with issue
+    # type ISSUE and null content (assuming the user who owns the token has permission
+    # to see the items, the org-scoped token is allowed to know that the item exists,
+    # but not to view its content.)
+    cards = [card for card in project_data if card["content"] is not None]
     omitted_count = len(project_data) - len(cards)
 
     return (
