@@ -121,7 +121,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mocket", specifier = "<=3.14.4" },
+    { name = "mocket", specifier = "<=3.14.5" },
     { name = "pre-commit", specifier = "<=4.6.2" },
     { name = "pytest", specifier = "<=9.1.1" },
     { name = "pytest-cov", specifier = "<=7.1.0" },
@@ -862,7 +862,7 @@ wheels = [
 
 [[package]]
 name = "mocket"
-version = "3.14.4"
+version = "3.14.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "decorator" },
@@ -871,9 +871,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/41/4a36658f35d20c67e32ee6282d14668e4d6cafdadae708260fdafb218cc0/mocket-3.14.4.tar.gz", hash = "sha256:95f10eda050a9150cd897e13cfc0b69085c455d21498cbdd79f876fa51cf9ad0", size = 89729, upload-time = "2026-08-26T06:15:04.484Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/1d/47a118647533b93fce2b477d24cb97615fe5dcbfe3ab9eec3b77778c43d8/mocket-3.14.5.tar.gz", hash = "sha256:536f16e1c9c28894594db2a2af96c0ade99ecdbe6c7676c2d0b97c5e4d803edd", size = 90130, upload-time = "2026-10-05T14:02:33.22Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/1a/fe87881cfe66578d4d8ff539e37c2d26b3f7828e70ab999a08ba53ef47a8/mocket-3.14.4-py3-none-any.whl", hash = "sha256:7aa767a21aa06fed287d6105ff7fbcb8570939eecc18efbe9a477e5d7fc1e544", size = 38792, upload-time = "2026-08-26T06:15:02.862Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/10/5837a5ce8db75411f6fe0880ea34b64e418b8b399459978600dfb40656e7/mocket-3.14.5-py3-none-any.whl", hash = "sha256:80069bbcf0f987fa91e075b36ba8aedd74bcc3545683422e7e363e3280f8c999", size = 38777, upload-time = "2026-10-05T14:02:31.529Z" },
 ]
 
 [[package]]
