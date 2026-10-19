@@ -1,0 +1,48 @@
+# Dummy test data for workspace.utils.people. These are not real people.
+#
+# PERSON_ONE/TWO/THREE and TEST_PERSON exist purely for workspace.utils.people's
+# own tests (test_people.py). MIKE, NISHTHA, MARY, STEVE, THOMAS and KATIE exist
+# because workspace/standup/jobs.py hardcodes those specific attribute names
+# (`People.MIKE`, etc.) at import time - the github_username/slack_username
+# values below are fake placeholders, not the real team's actual identities.
+people:
+  PERSON_ONE:
+    github_username: person-one
+    slack_username: UPERSONONE1
+  PERSON_TWO:
+    github_username: person-two
+    slack_username: UPERSONTWO1
+  PERSON_THREE:
+    github_username: person-three
+    slack_username: UPERSONTHREE1
+  TEST_PERSON:
+    github_username: test-person
+    slack_username: UTESTPERSON
+    human_readable: Overridden Name
+  MIKE:
+    github_username: test-mike
+    slack_username: UTESTMIKE01
+  NISHTHA:
+    github_username: test-nishtha
+    slack_username: UTESTNISHT1
+  MARY:
+    github_username: test-mary
+    slack_username: UTESTMARY01
+  STEVE:
+    github_username: test-steve
+    slack_username: UTESTSTEVE1
+  THOMAS:
+    github_username: test-thomas
+    slack_username: UTESTTHOM01
+  KATIE:
+    github_username: test-katie
+    slack_username: UTESTKATIE1
+
+teams:
+  # "Team REX" is a real team name (workspace.utils.people.TEAM_REX is read
+  # eagerly at import time for backwards compat with dependabot/jobs.py), but
+  # its members here are the dummy PERSON_ONE/TWO/THREE above, not the real team.
+  Team REX:
+    - PERSON_ONE
+    - PERSON_TWO
+    - PERSON_THREE
