@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from itertools import cycle, islice
 
-from workspace.utils.people import TEAM_REX
+from workspace.utils.people import team_members
 from workspace.utils.rota import RotaReporter
 
 
@@ -19,7 +19,7 @@ class DependabotRotaReporter(RotaReporter):
         this_monday = today - timedelta(days=today.weekday())
         next_monday = this_monday + timedelta(weeks=1)
 
-        candidates = [r for r in TEAM_REX]
+        candidates = team_members("Team REX")
         i = this_monday.isocalendar().week % len(candidates)
 
         # allow looping around the end of the list in case i+1==len(candidates)
