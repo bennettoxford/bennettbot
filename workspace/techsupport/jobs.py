@@ -83,10 +83,10 @@ class TechSupportRotaReporter(SpreadsheetRotaReporter):
         rota = {row[0]: (row[1], row[2]) for row in rows[1:] if len(row) >= 3}
         return rota
 
-    def get_rota_text_for_week(self, rota: dict, monday: date, this_or_next: str):
+    def get_rota_text_for_interval(self, rota: dict, monday: date, this_or_next: str):
         try:
             primary, secondary = rota[str(monday)]
-            return f"Primary tech support {this_or_next} week ({self.format_week(monday)}): {primary} (secondary: {secondary})"
+            return f"Primary tech support {this_or_next} week ({self.format_interval(monday)}): {primary} (secondary: {secondary})"
         except KeyError:
             return f"No rota data found for {this_or_next} week"
 

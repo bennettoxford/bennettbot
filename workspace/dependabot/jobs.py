@@ -33,7 +33,7 @@ class DependabotRotaReporter(RotaReporter):
             next_monday: next(candidates),
         }
 
-    def get_rota_text_for_week(
+    def get_rota_text_for_interval(
         self, rota: dict, monday: date, this_or_next: str
     ) -> str:
         checker = rota[monday]
@@ -41,7 +41,7 @@ class DependabotRotaReporter(RotaReporter):
             checker = checker.formatted_slack_username
         else:
             checker = checker.human_readable
-        return f"To review dependabot PRs {this_or_next} week ({self.format_week(monday)}): {checker}"
+        return f"To review dependabot PRs {this_or_next} week ({self.format_interval(monday)}): {checker}"
 
 
 def report_rota() -> str:
