@@ -2,15 +2,9 @@ import argparse
 import json
 from datetime import date, datetime, timedelta
 
+from bennettbot import settings
 from workspace.utils import blocks
-from workspace.utils.people import People
-
-
-PAIRS = {
-    "monday": [People.MIKE, People.NISHTHA],
-    "wednesday": [People.MARY, People.STEVE],
-    "friday": [People.THOMAS, People.KATIE],
-}
+from workspace.utils.people import team_members
 
 
 WEEKDAY_INTS = {
@@ -18,6 +12,22 @@ WEEKDAY_INTS = {
     "wednesday": 2,
     "friday": 4,
 }
+
+
+def get_pairs():
+    # "Team REX standup" is defined in people_config.yaml (which lives in
+    # WRITEABLE_DIR in production). See people_config.sample.yaml for an
+    # example.
+    team = team_members("Team REX standup")
+    assert len(team) == 6, (
+        f'"Team REX standup" expects exactly 6 members (found {len(team)}). '
+        f'Fix the "Team REX standup" team in {settings.WRITEABLE_DIR}/people_config.yaml.'
+    )
+    return {
+        "monday": team[0:2],
+        "wednesday": team[2:4],
+        "friday": team[4:6],
+    }
 
 
 def get_next_rota_date(day_of_week):
@@ -33,6 +43,7 @@ def is_even_week(rota_date):
 
 
 def weekly_rota(args):
+    pairs = get_pairs()
     today = date.today()
     primary = is_even_week(today)
     secondary = 0 if primary else 1
@@ -40,9 +51,9 @@ def weekly_rota(args):
     days = "\n".join(
         [
             f"{day_of_week.title()}: "
-            f"{PAIRS[day_of_week][primary].human_readable} "
-            f"(backup: {PAIRS[day_of_week][secondary].human_readable})"
-            for day_of_week in PAIRS.keys()
+            f"{pairs[day_of_week][primary].human_readable} "
+            f"(backup: {pairs[day_of_week][secondary].human_readable})"
+            for day_of_week in pairs.keys()
         ]
     )
     return json.dumps(blocks.get_basic_header_and_text_blocks(header, days))
@@ -50,6 +61,7 @@ def weekly_rota(args):
 
 def daily_rota(args):
     day_of_week = args.day_of_week
+    pairs = get_pairs()
     rota_date = get_next_rota_date(day_of_week)
 
     primary = is_even_week(rota_date)
@@ -57,8 +69,8 @@ def daily_rota(args):
     header = "Team Rex stand up"
     body = (
         f"{day_of_week.title()}: "
-        f"{PAIRS[day_of_week][primary].formatted_slack_username} "
-        f"(backup: {PAIRS[day_of_week][secondary].human_readable})"
+        f"{pairs[day_of_week][primary].formatted_slack_username} "
+        f"(backup: {pairs[day_of_week][secondary].human_readable})"
     )
 
     return json.dumps(blocks.get_basic_header_and_text_blocks(header, body))

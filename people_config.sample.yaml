@@ -100,3 +100,11 @@ teams:
     - MIKE
     - THOMAS
     - ELI
+  # Members of Team REX who particpate in the stand-up rota
+  Team REX standup:
+    - MIKE
+    - NISHTHA
+    - MARY
+    - STEVE
+    - THOMAS
+    - KATIE

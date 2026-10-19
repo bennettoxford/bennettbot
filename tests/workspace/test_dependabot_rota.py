@@ -1,5 +1,6 @@
 import json
 
+from workspace.dependabot import jobs
 from workspace.dependabot.jobs import report_rota
 from workspace.utils.people import Person
 
@@ -49,7 +50,7 @@ EXTRA_TEXT = (
 
 def test_rota_report_on_monday(freezer, monkeypatch):
     freezer.move_to("2024-03-25")
-    monkeypatch.setattr("workspace.dependabot.jobs.TEAM_REX", TEAM_REX)
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_REX)
 
     blocks = json.loads(report_rota())
 
@@ -81,7 +82,7 @@ def test_rota_report_on_monday(freezer, monkeypatch):
 
 def test_rota_report_on_tuesday(freezer, monkeypatch):
     freezer.move_to("2024-03-26")
-    monkeypatch.setattr("workspace.dependabot.jobs.TEAM_REX", TEAM_REX)
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_REX)
 
     blocks = json.loads(report_rota())
 
