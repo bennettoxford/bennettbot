@@ -100,7 +100,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.2
+pre-commit==4.7.0
 proto-plus==1.29.0
     # via google-api-core
 protobuf==7.36.2
@@ -132,7 +132,7 @@ pytest==9.1.1
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.1.0
-pytest-env==1.7.1
+pytest-env==1.8.0
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
