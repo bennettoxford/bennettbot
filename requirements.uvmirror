@@ -4,7 +4,7 @@ bcrypt==5.0.0
     # via paramiko
 blinker==1.9.0
     # via flask
-certifi==2026.7.22
+certifi==2026.10.19
     # via requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy'
     # via
@@ -35,7 +35,7 @@ environs==15.2.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
-filelock==4.1.1
+filelock==4.2.0
     # via
     #   python-discovery
     #   virtualenv
@@ -96,7 +96,7 @@ paramiko==5.0.0
     # via fab-classic
 platformdirs==4.13.0
     # via virtualenv
-pluggy==1.6.0
+pluggy==1.7.0
     # via
     #   pytest
     #   pytest-cov
