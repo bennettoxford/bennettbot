@@ -645,6 +645,19 @@ raw_config = {
                 "run_args_template": "python update_dependencies.py --team 'Team RAP' now",
                 "report_stdout": True,
             },
+            "database_reports_report": {
+                "run_args_template": "python database_reports.py rota",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "database_reports_advance": {
+                "run_args_template": "python database_reports.py advance",
+                "report_stdout": True,
+            },
+            "database_reports_now": {
+                "run_args_template": "python database_reports.py now",
+                "report_stdout": True,
+            },
         },
         "slack": [
             {
@@ -664,6 +677,24 @@ raw_config = {
                 "help": "Report who's on Team RAP's update-dependencies duty right now",
                 "action": "schedule_job",
                 "job_type": "rap_update_dependencies_now",
+            },
+            {
+                "command": "database-reports report",
+                "help": "Report who's currently on Team RAP's database-reports rota",
+                "action": "schedule_job",
+                "job_type": "database_reports_report",
+            },
+            {
+                "command": "database-reports advance",
+                "help": "Shift the Team RAP database-reports rota forward by one, e.g. if the person on duty is unavailable",
+                "action": "schedule_job",
+                "job_type": "database_reports_advance",
+            },
+            {
+                "command": "database-reports now",
+                "help": "Report who's on Team RAP's database-reports duty right now",
+                "action": "schedule_job",
+                "job_type": "database_reports_now",
             },
         ],
     },
