@@ -723,6 +723,49 @@ def test_no_listener_found(mock_app):
     assert resp.body == "Unhandled message"
 
 
+def test_unhandled_block_action(mock_app):
+    # Interactive payloads (e.g. a checkbox click on a rota report, which
+    # nothing handles) have a completely different shape to events - no
+    # "event" key at all. The error handler must not crash trying to look
+    # for a message in a payload shape that doesn't have one.
+    body = {
+        "type": "block_actions",
+        "team": {"id": "T111", "domain": "test"},
+        "user": {"id": "W111", "username": "test", "team_id": "T111"},
+        "api_app_id": "A111",
+        "token": "verification_token",
+        "container": {"type": "message", "message_ts": "1596183880.004200"},
+        "trigger_id": "111.222.333",
+        "channel": {"id": "C0002", "name": "test-channel"},
+        "message": {"type": "message", "ts": "1596183880.004200"},
+        "actions": [
+            {
+                "action_id": "rap_update_deps_repo_0",
+                "block_id": "block1",
+                "type": "checkboxes",
+                "selected_options": [],
+                "action_ts": "1596183880.004200",
+            }
+        ],
+    }
+    timestamp, body_text = str(int(time.time())), json.dumps(body)
+    signature = SignatureVerifier("secret").generate_signature(
+        body=body_text,
+        timestamp=timestamp,
+    )
+    headers = {
+        "content-type": ["application/json"],
+        "x-slack-signature": [signature],
+        "x-slack-request-timestamp": [timestamp],
+    }
+    request = BoltRequest(body=body_text, headers=headers)
+
+    resp = mock_app.dispatch(request)
+
+    assert resp.status == 200
+    assert resp.body == "Unhandled message"
+
+
 def test_unexpected_error(mock_app):
     # Unexpected errors post a X reaction and respond with the error
     with patch("bennettbot.bot.handle_namespace_help", side_effect=Exception):
@@ -757,6 +800,30 @@ def test_already_reacted_to_tech_support_error(mock_app):
             channel="channel",
             reaction_count=1,
             event_type="message",
+            expected_status=200,
+        )
+
+    assert_slack_client_sends_messages(messages_kwargs=[])
+
+
+def test_already_reacted_to_tech_support_error_on_message_changed(mock_app):
+    # A message_changed event's current text lives under
+    # event["message"]["text"], not event["text"] - exercise that branch
+    # specifically, since that's what a real edited tech-support message
+    # looks like (see test_tech_support_edited_message).
+    with patch(
+        "bennettbot.bot.tech_support_out_of_office",
+        side_effect=SlackApiError(
+            message="Error", response=Mock(data={"error": "already_reacted"})
+        ),
+    ):
+        handle_message(
+            mock_app,
+            "tech-support help",
+            channel="channel",
+            reaction_count=1,
+            event_type="message",
+            event_kwargs={"subtype": "message_changed"},
             expected_status=200,
         )
 
