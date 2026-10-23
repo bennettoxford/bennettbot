@@ -1,12 +1,17 @@
 import json
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 
 from bennettbot import settings
 from workspace.utils.blocks import RUN_COMMAND_BUTTON_ACTION_ID
 from workspace.utils.people import Person
-from workspace.utils.rota import RollingRotaReporter, WeeklyCadence
+from workspace.utils.rota import (
+    MonthlyCadence,
+    NWeeklyCadence,
+    RollingRotaReporter,
+    WeeklyCadence,
+)
 
 
 PERSON_A = Person("person-a", "UPERSONA001", "Person A")
@@ -235,3 +240,95 @@ def test_get_rota_and_advance_use_the_cadence_for_all_date_math(tmp_path, freeze
     freezer.move_to("2024-03-25")
     message = make_reporter(tmp_path, cadence=cadence).advance()
     assert CANDIDATES[(1 + 1) % len(CANDIDATES)].formatted_slack_username in message
+
+
+@pytest.mark.parametrize(
+    "d,expected",
+    [
+        # Any day within the same 4-week block maps to the same interval
+        # start, which falls on the same weekday as start_date (a Thursday).
+        (date(2024, 1, 4), date(2024, 1, 4)),  # start_date itself
+        (date(2024, 1, 8), date(2024, 1, 4)),
+        (date(2024, 1, 31), date(2024, 1, 4)),
+        (date(2024, 2, 1), date(2024, 2, 1)),  # the next block
+        # Before start_date (e.g. trying out the rota ahead of going live)
+        # still reports the first interval, rather than counting backwards
+        # into a notional earlier cycle.
+        (date(2024, 1, 3), date(2024, 1, 4)),
+        (date(2023, 12, 1), date(2024, 1, 4)),
+    ],
+)
+def test_n_weekly_cadence_interval_start(d, expected):
+    cadence = NWeeklyCadence(weeks=4, start_date=date(2024, 1, 4))
+
+    assert cadence.interval_start(d) == expected
+
+
+@pytest.mark.parametrize(
+    "weeks,expected", [(4, date(2024, 1, 12)), (6, date(2024, 1, 26))]
+)
+def test_n_weekly_cadence_next_interval_start_and_index_advance_by_one_block(
+    weeks, expected
+):
+    cadence = NWeeklyCadence(weeks=weeks, start_date=date(2023, 12, 15))
+
+    assert cadence.next_interval_start(date(2023, 12, 15)) == expected
+    assert (
+        cadence.interval_index(expected)
+        == cadence.interval_index(date(2023, 12, 15)) + 1
+    )
+
+
+@pytest.mark.parametrize(
+    "day_of_month,d,expected",
+    [
+        (None, date(2024, 3, 17), date(2024, 3, 1)),  # defaults to the 1st
+        (15, date(2024, 3, 15), date(2024, 3, 15)),  # on day_of_month
+        (15, date(2024, 3, 20), date(2024, 3, 15)),  # after day_of_month
+        # Before day_of_month belongs to the interval that started last
+        # month - not a one-off "before the rota's first interval" case
+        # like NWeeklyCadence's start_date, since day_of_month recurs every
+        # month.
+        (15, date(2024, 3, 14), date(2024, 2, 15)),
+        (15, date(2024, 1, 1), date(2023, 12, 15)),  # rolls back over a year
+    ],
+)
+def test_monthly_cadence_interval_start(day_of_month, d, expected):
+    cadence = (
+        MonthlyCadence()
+        if day_of_month is None
+        else MonthlyCadence(day_of_month=day_of_month)
+    )
+
+    assert cadence.interval_start(d) == expected
+
+
+@pytest.mark.parametrize("day_of_month", [0, 29])
+def test_monthly_cadence_rejects_day_of_month_outside_1_to_28(day_of_month):
+    with pytest.raises(ValueError):
+        MonthlyCadence(day_of_month=day_of_month)
+
+
+@pytest.mark.parametrize(
+    "interval_start,expected",
+    [
+        (date(2024, 3, 15), date(2024, 4, 15)),
+        (date(2024, 12, 15), date(2025, 1, 15)),  # rolls over the year
+    ],
+)
+def test_monthly_cadence_next_interval_start(interval_start, expected):
+    cadence = MonthlyCadence(day_of_month=15)
+
+    assert cadence.next_interval_start(interval_start) == expected
+
+
+def test_monthly_cadence_interval_index_is_consistent_across_a_year_boundary():
+    # Unlike WeeklyCadence's ISO week number, which resets each year,
+    # MonthlyCadence's index must keep incrementing by one across a
+    # December-to-January rollover.
+    cadence = MonthlyCadence(day_of_month=15)
+
+    december = cadence.interval_index(date(2024, 12, 15))
+    january = cadence.interval_index(date(2025, 1, 15))
+
+    assert january == december + 1
