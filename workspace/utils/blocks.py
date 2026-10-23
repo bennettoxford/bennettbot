@@ -32,6 +32,28 @@ def get_basic_header_and_text_blocks(
     return [header_block] + text_blocks
 
 
+# Slack caps a section block's "fields" grid at this many items.
+MAX_FIELDS_PER_BLOCK = 10
+
+
+def get_fields_blocks(fields: list[str], text_type="mrkdwn") -> list[dict]:
+    """
+    `fields` laid out as Slack's native 2-column "fields" grid (fields fill
+    left-to-right, top-to-bottom), split across as many section blocks as
+    needed to stay within Slack's limit of MAX_FIELDS_PER_BLOCK.
+    """
+    return [
+        {
+            "type": "section",
+            "fields": [
+                {"type": text_type, "text": field}
+                for field in fields[i : i + MAX_FIELDS_PER_BLOCK]
+            ],
+        }
+        for i in range(0, len(fields), MAX_FIELDS_PER_BLOCK)
+    ]
+
+
 def get_ambiguous_target_blocks(target: str, orgs: list[str]) -> list:
     """Header + body explaining that a bare repo name maps to multiple known orgs."""
     options = ", ".join(f"`{org}/{target}`" for org in sorted(orgs))

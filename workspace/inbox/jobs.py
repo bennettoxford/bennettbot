@@ -7,10 +7,10 @@ class InboxRotaReporter(SpreadsheetRotaReporter):
     def convert_rota_data_to_dictionary(self, rows) -> dict:
         return {row[0]: row[1] for row in rows[1:] if len(row) >= 2}
 
-    def get_rota_text_for_week(self, rota: dict, monday: date, this_or_next: str):
+    def get_rota_text_for_interval(self, rota: dict, monday: date, this_or_next: str):
         try:
             researcher = rota[str(monday)]
-            return f"Researcher {this_or_next} week ({self.format_week(monday)}): {researcher}"
+            return f"Researcher {this_or_next} week ({self.format_interval(monday)}): {researcher}"
         except KeyError:
             return f"No rota data found for {this_or_next} week"
 

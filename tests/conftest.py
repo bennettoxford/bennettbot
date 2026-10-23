@@ -7,7 +7,7 @@ import os
 import pytest
 
 from bennettbot import settings
-from workspace.utils import github_rest_api, repos_config
+from workspace.utils import github_rest_api, people, repos_config
 
 
 pytest.register_assert_rewrite("tests.assertions")
@@ -27,6 +27,14 @@ def reset_repos_config_cache():
     repos_config.load_config.cache_clear()
     yield
     repos_config.load_config.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def reset_people_config_cache():
+    """Clear cached YAML config between tests so patches don't leak."""
+    people.load_config.cache_clear()
+    yield
+    people.load_config.cache_clear()
 
 
 @pytest.fixture(autouse=True)

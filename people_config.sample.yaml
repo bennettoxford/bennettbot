@@ -1,0 +1,122 @@
+# NOTE: THIS FILE REPRESENTS EXAMPLE CONFIG ONLY. CHANGES MADE HERE WILL NOT BE
+# AUTOMATICALLY APPLIED TO PRODUCTION
+#
+# Example people config for bennettbot.
+# Updated: 2026-10-20; this represents the state of production config at this time.
+# Copy this file to $WRITEABLE_DIR/people_config.yaml and edit there;
+# production updates do not require a code change.
+#
+# This is kept separate from repos_config.yaml because not everyone listed
+# here has repo responsibilities.
+
+# Find a Slack user's username by right-clicking on their name in the Slack
+# app and clicking "Copy link".
+#
+# human_readable is optional; if omitted it defaults to the key, title-cased
+# with underscores turned into spaces (e.g. NAME_A -> "Name A"). Only set it
+# explicitly when that default would look wrong, e.g. when we want "NAME_AB" to
+# be shown as "Name AB" rather than "Name Ab"
+people:
+  ALICE:
+    github_username: alarthast
+    slack_username: U07KX6L3CMA
+  BECKY:
+    github_username: rebkwok
+    slack_username: U01SP5JLBFD
+  CATHERINE:
+    github_username: CLStables
+    slack_username: U036A6LTR7D
+  DAVE:
+    github_username: evansd
+    slack_username: UAXE5V4RG
+  ELI:
+    github_username: eli-miriam
+    slack_username: U07LHEJ9TS4
+  IAIN:
+    github_username: iaindillingham
+    slack_username: U01S6BLGK28
+  JON:
+    github_username: Jongmassey
+    slack_username: U023ZG5H24R
+  KATIE:
+    github_username: KatieB5
+    slack_username: U07KUKWBGKV
+  KLAUDIA:
+    github_username: klau-b
+    slack_username: U07CBHR2QBF
+  LUCY:
+    github_username: lucyb
+    slack_username: U035FT48KEK
+  MARY:
+    github_username: Mary-Anya
+    slack_username: U07LKQ06Q8L
+  MILAN:
+    github_username: milanwiedemann
+    slack_username: U02GPV8NNU9
+  MIKE:
+    github_username: mikerkelly
+    slack_username: U07KKL4PJJY
+  NIK:
+    github_username: niksilver
+    slack_username: U0BJCULALLW
+  NISHTHA:
+    github_username: nishtha-kalra
+    slack_username: U09863KPURF
+  PETER:
+    github_username: inglesp
+    slack_username: U4N1YPAP7
+  RICHARD:
+    github_username: rw251
+    slack_username: U07QEMHUUMD
+  SAM:
+    github_username: samrobbins85
+    slack_username: U0CADFTLYSY
+  SEB:
+    github_username: sebbacon
+    slack_username: U321M2RMZ
+  STEVE:
+    github_username: StevenMaude
+    slack_username: U01TJP3CG76
+  SUZANNE:
+    github_username: suzannehamilton
+    slack_username: U08V28Z1BQV
+  THOMAS:
+    github_username: tomodwyer
+    slack_username: U01UQ0T2M7V
+  TOM_P:
+    github_username: remlapmot
+    slack_username: U07L0L0SS6M
+  TOM_W:
+    github_username: madwort
+    slack_username: U019R5FJ7G8
+
+# Teams, as ordered lists of the people: keys above. Rota reporters rotate
+# through these lists in the order given here.
+#
+# This file is about people and groups of people in general.
+# repos_config.yaml also contains a list of teams (teams that own repos).
+# If a job needs to refer to teams from both config files, ensure that the
+# team names match.
+teams:
+  Team REX:
+    - NISHTHA
+    - KATIE
+    - LUCY
+    - STEVE
+    - MIKE
+    - THOMAS
+    - ELI
+  # Members of Team REX who particpate in the stand-up rota
+  Team REX standup:
+    - MIKE
+    - NISHTHA
+    - MARY
+    - STEVE
+    - THOMAS
+    - KATIE
+  Team RAP:
+    - SUZANNE
+    - DAVE
+    - BECKY
+    - ALICE
+    - SAM

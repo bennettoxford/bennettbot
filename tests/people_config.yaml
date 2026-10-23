@@ -1,0 +1,44 @@
+# Dummy test data for workspace.utils.people. These are not real people, so
+# this fixture is free to change without needing to track who's actually on
+# any team - tests that need specific values build their own Person
+# instances instead of relying on entries here (see test_dependabot_rota.py
+# and test_standup_rota.py).
+people:
+  PERSON_ONE:
+    github_username: person-one
+    slack_username: UPERSONONE1
+  PERSON_TWO:
+    github_username: person-two
+    slack_username: UPERSONTWO1
+  PERSON_THREE:
+    github_username: person-three
+    slack_username: UPERSONTHREE1
+  PERSON_FOUR:
+    github_username: person-four
+    slack_username: UPERSONFOUR1
+  PERSON_FIVE:
+    github_username: person-five
+    slack_username: UPERSONFIVE1
+  PERSON_SIX:
+    github_username: person-six
+    slack_username: UPERSONSIX1
+  TEST_PERSON:
+    github_username: test-person
+    slack_username: UTESTPERSON
+    human_readable: Overridden Name
+
+teams:
+  Team REX:
+    - PERSON_ONE
+    - PERSON_TWO
+    - PERSON_THREE
+  # workspace/standup/jobs.py reads this at import time, so it must exist
+  # here even though test_standup_rota.py monkeypatches PAIRS with its own
+  # dummy Person instances afterward.
+  Team REX standup:
+    - PERSON_ONE
+    - PERSON_TWO
+    - PERSON_THREE
+    - PERSON_FOUR
+    - PERSON_FIVE
+    - PERSON_SIX
