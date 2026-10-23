@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example people config for bennettbot.
-# Updated: 2026-10-16; this represents the state of production config at this time.
+# Updated: 2026-10-20; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/people_config.yaml and edit there;
 # production updates do not require a code change.
 #
@@ -68,12 +68,18 @@ people:
   RICHARD:
     github_username: rw251
     slack_username: U07QEMHUUMD
+  SAM:
+    github_username: samrobbins85
+    slack_username: U0CADFTLYSY
   SEB:
     github_username: sebbacon
     slack_username: U321M2RMZ
   STEVE:
     github_username: StevenMaude
     slack_username: U01TJP3CG76
+  SUZANNE:
+    github_username: suzannehamilton
+    slack_username: U08V28Z1BQV
   THOMAS:
     github_username: tomodwyer
     slack_username: U01UQ0T2M7V
@@ -108,3 +114,9 @@ teams:
     - STEVE
     - THOMAS
     - KATIE
+  Team RAP:
+    - SUZANNE
+    - DAVE
+    - BECKY
+    - ALICE
+    - SAM
