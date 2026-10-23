@@ -629,6 +629,44 @@ raw_config = {
             },
         ],
     },
+    "rotas": {
+        "description": "Rolling rotas for teams whose membership/cadence is config-driven",
+        "jobs": {
+            "rap_update_dependencies_report": {
+                "run_args_template": "python update_dependencies.py --team 'Team RAP' rota",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "rap_update_dependencies_advance": {
+                "run_args_template": "python update_dependencies.py --team 'Team RAP' advance",
+                "report_stdout": True,
+            },
+            "rap_update_dependencies_now": {
+                "run_args_template": "python update_dependencies.py --team 'Team RAP' now",
+                "report_stdout": True,
+            },
+        },
+        "slack": [
+            {
+                "command": "rap-update-deps report",
+                "help": "Report who's next on Team RAP's update-dependencies rota",
+                "action": "schedule_job",
+                "job_type": "rap_update_dependencies_report",
+            },
+            {
+                "command": "rap-update-deps advance",
+                "help": "Shift the Team RAP update-dependencies rota forward by one, e.g. if this week's person is unavailable",
+                "action": "schedule_job",
+                "job_type": "rap_update_dependencies_advance",
+            },
+            {
+                "command": "rap-update-deps now",
+                "help": "Report who's on Team RAP's update-dependencies duty right now",
+                "action": "schedule_job",
+                "job_type": "rap_update_dependencies_now",
+            },
+        ],
+    },
     "codespaces": {
         "description": "Codespaces monitoring tools",
         "jobs": {
