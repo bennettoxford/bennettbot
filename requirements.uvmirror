@@ -35,7 +35,7 @@ environs==15.2.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
-filelock==4.2.0
+filelock==4.2.1
     # via
     #   python-discovery
     #   virtualenv
