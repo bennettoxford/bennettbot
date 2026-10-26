@@ -5,7 +5,7 @@ from workspace.utils import repos_config
 from workspace.utils.argparse import SplitCommaSeparatedString
 from workspace.utils.blocks import get_basic_header_and_text_blocks
 from workspace.utils.github_rest_api import get_client_for_org
-from workspace.utils.people import People
+from workspace.utils.people import by_github_username
 
 
 ORG_NAME = "opensafely-core"
@@ -208,7 +208,7 @@ def get_status_and_summary(card):  # pragma: no cover
     title = card["content"]["title"]
     url = card["content"].get("bodyUrl")
     assignees = " / ".join(
-        People.by_github_username(node["login"]).formatted_slack_username
+        by_github_username(node["login"]).formatted_slack_username
         for node in card["content"]["assignees"]["nodes"]
     )
 

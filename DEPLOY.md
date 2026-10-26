@@ -236,6 +236,17 @@ put this file at `/var/lib/dokku/data/storage/bennettbot/repos_config.yaml`.
 Update the repo_config.yaml to add the [installation IDs for each organisation](#install-the-app-and-get-installation-ids).
 
 
+### Add the people_config
+
+Make a copy of <people_config.sample.yaml>, and save it to the mounted $WRITEABLE_DIR in the
+same way as repos_config.yaml above, i.e. at
+`/var/lib/dokku/data/storage/bennettbot/people_config.yaml`.
+
+Note that where a job looks up both people (via this file) and repos (via
+repos_config.yaml) for the same team, the team name must be spelled identically
+in both files - this isn't validated automatically.
+
+
 ### Map port 9999 for incoming github hooks
 https://dokku.com/docs/networking/port-management/
 
