@@ -6,7 +6,7 @@
     "config:recommended",
     // ensure all GHA are pinned to digests
     // https://docs.renovatebot.com/presets-helpers/#helperspingithubactiondigests
-    "helpers:pinGitHubActionDigests",
+    "helpers:pinGitHubActionDigestsToSemver",
     // report on abandoned pacakges
     // https://docs.renovatebot.com/presets-abandonments/
     "abandonments:recommended",
@@ -105,6 +105,9 @@
       "matchManagers": ["github-actions"],
       "addLabels": ["actions"],
       "minimumReleaseAge": "7 days",
+      // Prevent permanently pending runs when there is a package that doesn't
+      // provide a timestamp
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
       "schedule": [
         "* 0-3 * * WED"
       ]
