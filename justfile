@@ -62,7 +62,7 @@ install-precommit:
     test -f $BASE_DIR/.git/hooks/pre-commit || uv run pre-commit install
 
 # recipe is only used if we want upgrade packages outside of dependabot
-upgrade-package package: devenv
+upgrade-package package cooldown="7 days ago": && devenv
     uv lock --upgrade-package {{ package }}
 
 # The upgrade-all recipe is used for doing lockfileMaintenance via update-dependencies action, until min release age is respected fo uv
