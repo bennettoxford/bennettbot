@@ -83,7 +83,7 @@ markupsafe==3.0.4
     #   werkzeug
 marshmallow==4.3.1
     # via environs
-mocket==3.14.5
+mocket==3.15.0
 nodeenv==1.11.0
     # via pre-commit
 opentelemetry-api==1.45.1
@@ -132,7 +132,7 @@ pytest==9.1.1
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.1.0
-pytest-env==1.8.0
+pytest-env==1.8.1
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun

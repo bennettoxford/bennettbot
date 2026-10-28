@@ -123,7 +123,7 @@ dev = [
   "pre-commit<=4.7.0",
   "pytest<=9.1.1",
   "pytest-cov<=7.1.0",
-  "pytest-env<=1.8.0",
+  "pytest-env<=1.8.1",
   "pytest-freezer<=0.4.9",
-  "mocket<=3.14.5",
+  "mocket<=3.15.0",
 ]
