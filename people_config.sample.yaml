@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example people config for bennettbot.
-# Updated: 2026-10-20; this represents the state of production config at this time.
+# Updated: 2026-11-03; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/people_config.yaml and edit there;
 # production updates do not require a code change.
 #
@@ -83,9 +83,6 @@ people:
   THOMAS:
     github_username: tomodwyer
     slack_username: U01UQ0T2M7V
-  TOM_P:
-    github_username: remlapmot
-    slack_username: U07L0L0SS6M
   TOM_W:
     github_username: madwort
     slack_username: U019R5FJ7G8

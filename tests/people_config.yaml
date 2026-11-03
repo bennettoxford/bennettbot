@@ -32,9 +32,6 @@ teams:
     - PERSON_ONE
     - PERSON_TWO
     - PERSON_THREE
-  # workspace/standup/jobs.py reads this at import time, so it must exist
-  # here even though test_standup_rota.py monkeypatches PAIRS with its own
-  # dummy Person instances afterward.
   Team REX standup:
     - PERSON_ONE
     - PERSON_TWO
