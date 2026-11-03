@@ -334,16 +334,20 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
 
     @app.error
     def handle_errors(error, body):
-        if "message" in body["event"]:
-            message_text = body["event"]["message"]["text"]
-        else:
-            message_text = body["event"].get("text", "")
-
         if isinstance(error, BoltUnhandledRequestError):
-            # Unhandled messages are common (anything that doesn't get matched
-            # by one of the listeners).  We don't want to log those.
+            # Unhandled requests are common (anything that doesn't get
+            # matched by one of the listeners, including interactive
+            # payloads like block actions - e.g. checkbox clicks - that
+            # nothing needs to handle).
             return BoltResponse(status=200, body="Unhandled message")
-        elif (
+
+        event = body.get("event", {})
+        if "message" in event:
+            message_text = event["message"]["text"]
+        else:
+            message_text = event.get("text", "")
+
+        if (
             isinstance(error, SlackApiError)
             and error.response.data["error"] == "already_reacted"
             and "tech-support" in message_text

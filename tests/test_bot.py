@@ -723,6 +723,48 @@ def test_no_listener_found(mock_app):
     assert resp.body == "Unhandled message"
 
 
+def test_unhandled_block_action(mock_app):
+    # Interactive payloads have a different shape to events, with no
+    # "event" key at all. The error handler must not crash trying to look
+    # for a message in a payload shape that doesn't have one.
+    body = {
+        "type": "block_actions",
+        "team": {"id": "T111", "domain": "test"},
+        "user": {"id": "W111", "username": "test", "team_id": "T111"},
+        "api_app_id": "A111",
+        "token": "verification_token",
+        "container": {"type": "message", "message_ts": "1596183880.004200"},
+        "trigger_id": "111.222.333",
+        "channel": {"id": "C0002", "name": "test-channel"},
+        "message": {"type": "message", "ts": "1596183880.004200"},
+        "actions": [
+            {
+                "action_id": "rap_update_deps_repo_0",
+                "block_id": "block1",
+                "type": "checkboxes",
+                "selected_options": [],
+                "action_ts": "1596183880.004200",
+            }
+        ],
+    }
+    timestamp, body_text = str(int(time.time())), json.dumps(body)
+    signature = SignatureVerifier("secret").generate_signature(
+        body=body_text,
+        timestamp=timestamp,
+    )
+    headers = {
+        "content-type": ["application/json"],
+        "x-slack-signature": [signature],
+        "x-slack-request-timestamp": [timestamp],
+    }
+    request = BoltRequest(body=body_text, headers=headers)
+
+    resp = mock_app.dispatch(request)
+
+    assert resp.status == 200
+    assert resp.body == "Unhandled message"
+
+
 def test_unexpected_error(mock_app):
     # Unexpected errors post a X reaction and respond with the error
     with patch("bennettbot.bot.handle_namespace_help", side_effect=Exception):
@@ -742,7 +784,16 @@ def test_unexpected_error(mock_app):
     )
 
 
-def test_already_reacted_to_tech_support_error(mock_app):
+@pytest.mark.parametrize(
+    "event_kwargs",
+    [
+        pytest.param({}, id="new_message"),
+        # Edited messages take a different path through the handler
+        # (see test_tech_support_edited_message)
+        pytest.param({"subtype": "message_changed"}, id="message_changed"),
+    ],
+)
+def test_already_reacted_to_tech_support_error(mock_app, event_kwargs):
     # mock an error from a method that's called during the tech-support
     # handling to return an "already reacted" SlackApiError
     with patch(
@@ -757,6 +808,7 @@ def test_already_reacted_to_tech_support_error(mock_app):
             channel="channel",
             reaction_count=1,
             event_type="message",
+            event_kwargs=event_kwargs,
             expected_status=200,
         )
 

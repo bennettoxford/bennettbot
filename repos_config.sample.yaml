@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-09-21; this represents the state of production config at this time.
+# Updated: 2026-10-23; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 # Note that App installation ids will need to be populated.
@@ -39,6 +39,8 @@ repos:
     actions-registry: Team REX
     airlock: Team RAP
     backend-server: Team RAP
+    base-docker: Team RAP
+    django_coverage_plugin: Team RAP
     ehrql: Team RAP
     job-runner: Team RAP
     job-server: Team REX
@@ -47,6 +49,7 @@ repos:
     opensafely-vscode: Team RAP
     osgithub: Team REX
     pipeline: Team RAP
+    proxy: Team RAP
     python-docker: Team RAP
     r-docker: Team RAP
     reports: Team REX
@@ -65,6 +68,7 @@ repos:
     team-manual: Team REX
   bennettoxford:
     bennettbot: Team RAP
+    emailcheck: Tech shared
     kissh: Team RAP
     openprescribing: OpenPrescribing dev
     openprescribing-v2: OpenPrescribing dev
@@ -73,7 +77,8 @@ repos:
 
 workflows:
   # Repos in this list are skipped entirely by the workflows jobs.
-  excluded_repos: []
+  excluded_repos:
+    - django_coverage_plugin
 
   # Workflow IDs that should not be reported for the given repo.
   ignored_workflows:

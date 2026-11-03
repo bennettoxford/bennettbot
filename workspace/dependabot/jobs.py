@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from itertools import cycle, islice
 
-from workspace.utils.people import TEAM_REX
+from workspace.utils.people import team_members
 from workspace.utils.rota import RotaReporter
 
 
@@ -19,7 +19,7 @@ class DependabotRotaReporter(RotaReporter):
         this_monday = today - timedelta(days=today.weekday())
         next_monday = this_monday + timedelta(weeks=1)
 
-        candidates = [r for r in TEAM_REX]
+        candidates = team_members("Team REX")
         i = this_monday.isocalendar().week % len(candidates)
 
         # allow looping around the end of the list in case i+1==len(candidates)
@@ -33,7 +33,7 @@ class DependabotRotaReporter(RotaReporter):
             next_monday: next(candidates),
         }
 
-    def get_rota_text_for_week(
+    def get_rota_text_for_interval(
         self, rota: dict, monday: date, this_or_next: str
     ) -> str:
         checker = rota[monday]
@@ -41,7 +41,7 @@ class DependabotRotaReporter(RotaReporter):
             checker = checker.formatted_slack_username
         else:
             checker = checker.human_readable
-        return f"To review dependabot PRs {this_or_next} week ({self.format_week(monday)}): {checker}"
+        return f"To review dependabot PRs {this_or_next} week ({self.format_interval(monday)}): {checker}"
 
 
 def report_rota() -> str:

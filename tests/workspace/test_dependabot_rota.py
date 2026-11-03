@@ -1,10 +1,17 @@
 import json
 
+from workspace.dependabot import jobs
 from workspace.dependabot.jobs import report_rota
-from workspace.utils.people import People
+from workspace.utils.people import Person
 
 
-TEAM_REX = [People.JON, People.LUCY, People.KATIE]
+# Dummy people, not the real Team REX - the rota logic doesn't care who's in
+# the list, just that it can cycle through them.
+DUMMY_A = Person("dummy-a", "UDUMMYA0001", "Dummy A")
+DUMMY_B = Person("dummy-b", "UDUMMYB0001", "Dummy B")
+DUMMY_C = Person("dummy-c", "UDUMMYC0001", "Dummy C")
+
+TEAM_REX = [DUMMY_A, DUMMY_B, DUMMY_C]
 
 EXTRA_TEXT = (
     "\nReview repos <https://github.com/opensafely-core/job-server/pulls|job-server>, "
@@ -43,7 +50,7 @@ EXTRA_TEXT = (
 
 def test_rota_report_on_monday(freezer, monkeypatch):
     freezer.move_to("2024-03-25")
-    monkeypatch.setattr("workspace.dependabot.jobs.TEAM_REX", TEAM_REX)
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_REX)
 
     blocks = json.loads(report_rota())
 
@@ -51,14 +58,14 @@ def test_rota_report_on_monday(freezer, monkeypatch):
         {"text": {"text": "Dependabot rota", "type": "plain_text"}, "type": "header"},
         {
             "text": {
-                "text": "To review dependabot PRs this week (25 Mar-29 Mar): <@U035FT48KEK>",
+                "text": "To review dependabot PRs this week (25 Mar-29 Mar): <@UDUMMYB0001>",
                 "type": "mrkdwn",
             },
             "type": "section",
         },
         {
             "text": {
-                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Katie",
+                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Dummy C",
                 "type": "mrkdwn",
             },
             "type": "section",
@@ -75,7 +82,7 @@ def test_rota_report_on_monday(freezer, monkeypatch):
 
 def test_rota_report_on_tuesday(freezer, monkeypatch):
     freezer.move_to("2024-03-26")
-    monkeypatch.setattr("workspace.dependabot.jobs.TEAM_REX", TEAM_REX)
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_REX)
 
     blocks = json.loads(report_rota())
 
@@ -83,14 +90,14 @@ def test_rota_report_on_tuesday(freezer, monkeypatch):
         {"text": {"text": "Dependabot rota", "type": "plain_text"}, "type": "header"},
         {
             "text": {
-                "text": "To review dependabot PRs this week (25 Mar-29 Mar): <@U035FT48KEK>",
+                "text": "To review dependabot PRs this week (25 Mar-29 Mar): <@UDUMMYB0001>",
                 "type": "mrkdwn",
             },
             "type": "section",
         },
         {
             "text": {
-                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Katie",
+                "text": "To review dependabot PRs next week (01 Apr-05 Apr): Dummy C",
                 "type": "mrkdwn",
             },
             "type": "section",
