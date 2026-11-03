@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from workspace.rotas import update_dependencies as jobs
 from workspace.utils.people import Person
 
@@ -203,10 +205,9 @@ def test_report_rota_chunks_repo_fields_at_slacks_ten_field_limit(
     assert len(blocks[4]["fields"]) == 2
 
 
-def test_combined_link_ors_repo_qualifiers_together(freezer, monkeypatch, tmp_path):
-    # GitHub ANDs repeated qualifiers of the same type by default, so
-    # multiple "repo:" filters need an explicit OR to match any PR in any
-    # of the repos, rather than (impossibly) all of them at once.
+def test_combined_repo_link(freezer, monkeypatch, tmp_path):
+    # The repo link combines multiple "repo:" filters with OR
+    # and filters by the "dependencies" label
     freezer.move_to("2024-03-25")
     patch_jobs(monkeypatch, tmp_path)
 
@@ -214,39 +215,21 @@ def test_combined_link_ors_repo_qualifiers_together(freezer, monkeypatch, tmp_pa
     links_text = blocks[2]["text"]["text"]
 
     assert "repo%3Aorg%2Frepo-one+OR+repo%3Aorg%2Frepo-two" in links_text
-
-
-def test_combined_link_filters_to_dependency_prs(freezer, monkeypatch, tmp_path):
-    # Filter to just dependency-update PRs (the "dependencies" label, which
-    # Dependabot/Renovate PRs get automatically and bot-authored PRs are
-    # also labelled with), not every open PR in the team's repos.
-    freezer.move_to("2024-03-25")
-    patch_jobs(monkeypatch, tmp_path)
-
-    blocks = json.loads(jobs.report_rota(TEAM_NAME))
-    links_text = blocks[2]["text"]["text"]
-
     assert "label%3Adependencies" in links_text
 
 
-def test_command_line_parser_dispatches_to_report_rota():
-    args = jobs.get_command_line_parser().parse_args(["--team", TEAM_NAME, "rota"])
+@pytest.mark.parametrize(
+    "command,function",
+    [
+        ("rota", jobs.report_rota),
+        ("advance", jobs.advance_rota),
+        ("now", jobs.now_rota),
+    ],
+)
+def test_command_line_parser_dispatch(command, function):
+    args = jobs.get_command_line_parser().parse_args(["--team", TEAM_NAME, command])
 
-    assert args.function is jobs.report_rota
-    assert args.team == TEAM_NAME
-
-
-def test_command_line_parser_dispatches_to_advance_rota():
-    args = jobs.get_command_line_parser().parse_args(["--team", TEAM_NAME, "advance"])
-
-    assert args.function is jobs.advance_rota
-    assert args.team == TEAM_NAME
-
-
-def test_command_line_parser_dispatches_to_now_rota():
-    args = jobs.get_command_line_parser().parse_args(["--team", TEAM_NAME, "now"])
-
-    assert args.function is jobs.now_rota
+    assert args.function is function
     assert args.team == TEAM_NAME
 
 

@@ -724,8 +724,7 @@ def test_no_listener_found(mock_app):
 
 
 def test_unhandled_block_action(mock_app):
-    # Interactive payloads (e.g. a checkbox click on a rota report, which
-    # nothing handles) have a completely different shape to events - no
+    # Interactive payloads have a different shape to events, with no
     # "event" key at all. The error handler must not crash trying to look
     # for a message in a payload shape that doesn't have one.
     body = {
@@ -785,7 +784,16 @@ def test_unexpected_error(mock_app):
     )
 
 
-def test_already_reacted_to_tech_support_error(mock_app):
+@pytest.mark.parametrize(
+    "event_kwargs",
+    [
+        pytest.param({}, id="new_message"),
+        # Edited messages take a different path through the handler
+        # (see test_tech_support_edited_message)
+        pytest.param({"subtype": "message_changed"}, id="message_changed"),
+    ],
+)
+def test_already_reacted_to_tech_support_error(mock_app, event_kwargs):
     # mock an error from a method that's called during the tech-support
     # handling to return an "already reacted" SlackApiError
     with patch(
@@ -800,30 +808,7 @@ def test_already_reacted_to_tech_support_error(mock_app):
             channel="channel",
             reaction_count=1,
             event_type="message",
-            expected_status=200,
-        )
-
-    assert_slack_client_sends_messages(messages_kwargs=[])
-
-
-def test_already_reacted_to_tech_support_error_on_message_changed(mock_app):
-    # A message_changed event's current text lives under
-    # event["message"]["text"], not event["text"] - exercise that branch
-    # specifically, since that's what a real edited tech-support message
-    # looks like (see test_tech_support_edited_message).
-    with patch(
-        "bennettbot.bot.tech_support_out_of_office",
-        side_effect=SlackApiError(
-            message="Error", response=Mock(data={"error": "already_reacted"})
-        ),
-    ):
-        handle_message(
-            mock_app,
-            "tech-support help",
-            channel="channel",
-            reaction_count=1,
-            event_type="message",
-            event_kwargs={"subtype": "message_changed"},
+            event_kwargs=event_kwargs,
             expected_status=200,
         )
 
