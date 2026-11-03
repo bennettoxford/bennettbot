@@ -21,7 +21,7 @@ ALL_OPEN_PRS_LINK_TEXT = (
     "<https://github.com/pulls?q=is%3Apr+is%3Aopen+"
     "%28repo%3Aorg%2Frepo-one+OR+repo%3Aorg%2Frepo-two%29+"
     "label%3Adependencies"
-    "|All open PRs>"
+    "|All open dependencies PRs>"
 )
 
 REPO_FIELDS_BLOCK = {

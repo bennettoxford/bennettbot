@@ -78,7 +78,7 @@ class UpdateDependenciesReporter(RollingRotaReporter):
         combined_link = "https://github.com/pulls?q=" + quote_plus(
             f"is:pr is:open ({repo_query}) label:dependencies"
         )
-        return f"<{combined_link}|All open PRs>"
+        return f"<{combined_link}|All open dependencies PRs>"
 
     def _repo_link_field_blocks(self) -> list[dict]:
         """
