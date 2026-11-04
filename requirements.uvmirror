@@ -126,13 +126,13 @@ pyparsing==3.3.3
     # via
     #   bennettbot
     #   httplib2
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   pytest-cov
     #   pytest-env
     #   pytest-freezer
 pytest-cov==7.1.0
-pytest-env==1.8.1
+pytest-env==1.8.3
 pytest-freezer==0.4.9
 python-dateutil==2.9.0.post0
     # via freezegun
