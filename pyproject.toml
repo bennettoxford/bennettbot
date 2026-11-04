@@ -120,9 +120,9 @@ required-version = ">=0.13"
 dev = [
   "ruff<=0.15.22",
   "pre-commit<=4.7.0",
-  "pytest<=9.1.1",
+  "pytest<=9.2.0",
   "pytest-cov<=7.1.0",
-  "pytest-env<=1.8.1",
+  "pytest-env<=1.8.3",
   "pytest-freezer<=0.4.9",
   "mocket<=3.15.0",
 ]
