@@ -48,6 +48,11 @@ def patch_jobs(monkeypatch, tmp_path):
         jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
     )
     monkeypatch.setattr(
+        jobs.repos_config,
+        "get_extra_repo_full_names_for_team",
+        lambda team_name: [],
+    )
+    monkeypatch.setattr(
         jobs.UpdateDependenciesReporter,
         "_state_path",
         lambda self: tmp_path / "team-dummy-update-dependencies.json",
@@ -80,8 +85,27 @@ def test_report_rota_on_monday(freezer, monkeypatch, tmp_path):
     ]
 
 
+@pytest.mark.parametrize(
+    "team_name,expected_substrings",
+    [
+        (
+            "Team RAP",
+            [
+                "Here's a reminder",
+                "  • check each repo for vulnerabilities and address",
+            ],
+        ),
+        (
+            "Team REX",
+            [
+                "Review Thomas' PRs for NPM updates.",
+                "Review the weekly Codespaces at risk report.",
+            ],
+        ),
+    ],
+)
 def test_report_rota_includes_notes_after_the_links_for_teams_that_have_them(
-    freezer, monkeypatch, tmp_path
+    freezer, monkeypatch, tmp_path, team_name, expected_substrings
 ):
     freezer.move_to("2024-03-25")  # Monday, ISO week 13
     monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
@@ -89,18 +113,22 @@ def test_report_rota_includes_notes_after_the_links_for_teams_that_have_them(
         jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
     )
     monkeypatch.setattr(
+        jobs.repos_config, "get_extra_repo_full_names_for_team", lambda team_name: []
+    )
+    monkeypatch.setattr(
         jobs.UpdateDependenciesReporter,
         "_state_path",
-        lambda self: tmp_path / "team-rap-update-dependencies.json",
+        lambda self: tmp_path / "notes-team-update-dependencies.json",
     )
 
-    blocks = json.loads(jobs.report_rota("Team RAP"))
+    blocks = json.loads(jobs.report_rota(team_name))
 
-    # header, duty, link, fields, notes, advance footnote
+    # header, duty, link, fields, notes, advance footnote - both teams have
+    # an advance command configured.
     assert len(blocks) == 6
     notes_text = blocks[-2]["text"]["text"]
-    assert "Here's a reminder" in notes_text
-    assert "  • check each repo for vulnerabilities and address" in notes_text
+    for substring in expected_substrings:
+        assert substring in notes_text
 
 
 def test_report_rota_omits_notes_for_teams_without_them(freezer, monkeypatch, tmp_path):
@@ -118,6 +146,7 @@ def test_report_rota_omits_notes_for_teams_without_them(freezer, monkeypatch, tm
     [
         (TEAM_NAME, "team-dummy-update-dependencies", None),
         ("Team RAP", "team-rap-update-dependencies", "rotas rap-dependencies advance"),
+        ("Team REX", "team-rex-update-dependencies", "rotas rex-dependencies advance"),
     ],
 )
 def test_report_rota_advance_footnote(
@@ -196,6 +225,37 @@ def test_report_rota_always_uses_full_repo_names(freezer, monkeypatch, tmp_path)
         "• <https://github.com/org-a/sysadmin/pulls|org-a/sysadmin>",
         "• <https://github.com/org-a/unique-repo/pulls|org-a/unique-repo>",
         "• <https://github.com/org-b/sysadmin/pulls|org-b/sysadmin>",
+    ]
+
+
+def test_report_rota_merges_and_deduplicates_extra_repos(
+    freezer, monkeypatch, tmp_path
+):
+    freezer.move_to("2024-03-25")
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
+    monkeypatch.setattr(
+        jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
+    )
+    monkeypatch.setattr(
+        jobs.repos_config,
+        "get_extra_repo_full_names_for_team",
+        lambda team_name: ["org/repo-two", "org/extra-repo"],
+    )
+    monkeypatch.setattr(
+        jobs.UpdateDependenciesReporter,
+        "_state_path",
+        lambda self: tmp_path / "team-dummy-update-dependencies.json",
+    )
+
+    blocks = json.loads(jobs.report_rota(TEAM_NAME))
+    repo_field_texts = [field["text"] for field in blocks[3]["fields"]]
+
+    # org/repo-two is in both REPOS and the extra repos - it should only
+    # appear once.
+    assert repo_field_texts == [
+        "• <https://github.com/org/extra-repo/pulls|org/extra-repo>",
+        "• <https://github.com/org/repo-one/pulls|org/repo-one>",
+        "• <https://github.com/org/repo-two/pulls|org/repo-two>",
     ]
 
 

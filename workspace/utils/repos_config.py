@@ -50,6 +50,17 @@ def find_orgs_for_repo(name: str) -> list[str]:
     return [org for org, repos in repos_by_org().items() if name in repos]
 
 
+def get_extra_repo_full_names_for_team(team: str) -> list[str]:
+    """Extra repos configured for `team` under `update_dependencies.extra_repos_by_team`,
+    on top of whatever `repos` says the team owns."""
+    return (
+        load_config()
+        .get("update_dependencies", {})
+        .get("extra_repos_by_team", {})
+        .get(team, [])
+    )
+
+
 def workflows_config() -> dict:
     return load_config()["workflows"]
 
