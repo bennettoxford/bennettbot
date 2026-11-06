@@ -26,25 +26,6 @@ class DummyRollingRotaReporter(RollingRotaReporter):
         return f"{this_or_next} ({self.format_interval(interval_start)}): {checker.human_readable}"
 
 
-class FakeFortnightlyCadence:
-    """A non-weekly cadence, to prove RollingRotaReporter doesn't hardcode
-    weekly math anywhere - intervals start every other Monday from a fixed
-    anchor, two weeks apart."""
-
-    anchor = date(2024, 3, 11)  # a Monday
-
-    def interval_index(self, interval_start: date) -> int:
-        return (interval_start - self.anchor).days // 14
-
-    def interval_start(self, d: date) -> date:
-        monday = d - timedelta(days=d.weekday())
-        fortnights_since_anchor = (monday - self.anchor).days // 14
-        return self.anchor + timedelta(weeks=2 * fortnights_since_anchor)
-
-    def next_interval_start(self, interval_start: date) -> date:
-        return interval_start + timedelta(weeks=2)
-
-
 def make_reporter(tmp_path, state_key="dummy-rota", cadence=None, advance_command=None):
     kwargs = {} if cadence is None else {"cadence": cadence}
     reporter = DummyRollingRotaReporter(
@@ -223,7 +204,7 @@ def test_get_rota_and_advance_use_the_cadence_for_all_date_math(tmp_path, freeze
     # 1: 2024-03-25 to 2024-04-07), so a weekly-hardcoded implementation
     # would wrongly treat them as two different intervals, and so pick two
     # different "now" candidates.
-    cadence = FakeFortnightlyCadence()
+    cadence = NWeeklyCadence(weeks=2, start_date=date(2024, 3, 11))  # a Monday
 
     freezer.move_to("2024-03-25")
     rota_at_start_of_fortnight = make_reporter(tmp_path, cadence=cadence).get_rota()
