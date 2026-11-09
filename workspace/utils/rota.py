@@ -82,23 +82,21 @@ class SpreadsheetRotaReporter(RotaReporter):
 
 
 class WeeklyCadence:
-    """One candidate per calendar week, Monday-anchored.
-
-    The only cadence RollingRotaReporter currently supports. A future
-    4-weekly or monthly cadence would be a different class with the same
-    three methods.
+    """One candidate per calendar week, anchored to `weekday` (0=Monday,
+    ..., 6=Sunday - same numbering as `date.weekday()`), which defaults to
+    Monday.
     """
 
-    @staticmethod
-    def interval_index(interval_start: date) -> int:
+    def __init__(self, weekday: int = 0):
+        self.weekday = weekday
+
+    def interval_index(self, interval_start: date) -> int:
         return interval_start.isocalendar().week
 
-    @staticmethod
-    def interval_start(d: date) -> date:
-        return d - timedelta(days=d.weekday())
+    def interval_start(self, d: date) -> date:
+        return d - timedelta(days=(d.weekday() - self.weekday) % 7)
 
-    @staticmethod
-    def next_interval_start(interval_start: date) -> date:
+    def next_interval_start(self, interval_start: date) -> date:
         return interval_start + timedelta(weeks=1)
 
 

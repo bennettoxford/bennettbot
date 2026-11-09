@@ -15,8 +15,8 @@ TEAM_NAME = "Team Dummy"
 REPOS = ["org/repo-one", "org/repo-two"]
 
 DUTY_TEXT = (
-    "On duty this week (25 Mar-29 Mar): <@UDUMMYB0001>\n"
-    "On duty next week (01 Apr-05 Apr): Dummy C"
+    "On duty this week (25 Mar-31 Mar): <@UDUMMYB0001>\n"
+    "On duty next week (01 Apr-07 Apr): Dummy C"
 )
 
 ALL_OPEN_PRS_LINK_TEXT = (
@@ -110,6 +110,29 @@ def test_report_rota_omits_notes_for_teams_without_them(freezer, monkeypatch, tm
 
     # header, duty, link, fields - nothing trailing
     assert len(blocks) == 4
+
+
+def test_duty_text_shows_the_full_week_according_to_cadence(
+    freezer, monkeypatch, tmp_path
+):
+    # Team RAP's rota runs Wednesday-Tuesday, so the displayed range should
+    # follow the cadence's anchor day.
+    freezer.move_to("2024-03-25")  # Monday, falls inside the 20-26 Mar interval
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
+    monkeypatch.setattr(
+        jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
+    )
+    monkeypatch.setattr(
+        jobs.UpdateDependenciesReporter,
+        "_state_path",
+        lambda self: tmp_path / "team-rap-update-dependencies.json",
+    )
+
+    blocks = json.loads(jobs.report_rota("Team RAP"))
+
+    duty_text = blocks[1]["text"]["text"]
+    assert "On duty this week (20 Mar-26 Mar)" in duty_text
+    assert "On duty next week (27 Mar-02 Apr)" in duty_text
 
 
 def test_report_rota_always_uses_full_repo_names(freezer, monkeypatch, tmp_path):

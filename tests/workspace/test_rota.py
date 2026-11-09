@@ -1,9 +1,11 @@
 import json
 from datetime import date, timedelta
 
+import pytest
+
 from bennettbot import settings
 from workspace.utils.people import Person
-from workspace.utils.rota import RollingRotaReporter
+from workspace.utils.rota import RollingRotaReporter, WeeklyCadence
 
 
 PERSON_A = Person("person-a", "UPERSONA001", "Person A")
@@ -135,6 +137,25 @@ def test_state_is_isolated_per_state_key(tmp_path, freezer):
     rota_two = make_reporter(tmp_path, state_key="rota-two").get_rota()
 
     assert rota_one[date(2024, 3, 25)] != rota_two[date(2024, 3, 25)]
+
+
+@pytest.mark.parametrize(
+    "weekday,d,expected",
+    [
+        # Defaults to Monday-anchored.
+        (None, date(2024, 3, 28), date(2024, 3, 25)),  # Thursday -> Monday
+        # Anchored to Wednesday (weekday=2). The most recent Wednesday on or
+        # before each of these dates is 2024-03-27.
+        (2, date(2024, 3, 27), date(2024, 3, 27)),  # Wed itself
+        (2, date(2024, 3, 28), date(2024, 3, 27)),  # Thu
+        (2, date(2024, 4, 1), date(2024, 3, 27)),  # Mon
+        (2, date(2024, 4, 3), date(2024, 4, 3)),  # next Wed
+    ],
+)
+def test_weekly_cadence_interval_start(weekday, d, expected):
+    cadence = WeeklyCadence() if weekday is None else WeeklyCadence(weekday=weekday)
+
+    assert cadence.interval_start(d) == expected
 
 
 def test_report_includes_rota_text_for_this_and_next(tmp_path, freezer):

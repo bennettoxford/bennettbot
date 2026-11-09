@@ -1,5 +1,6 @@
 import argparse
 import json
+from datetime import timedelta
 from urllib.parse import quote_plus
 
 from workspace.utils import repos_config
@@ -9,7 +10,7 @@ from workspace.utils.blocks import (
     get_text_block,
 )
 from workspace.utils.people import team_members
-from workspace.utils.rota import RollingRotaReporter
+from workspace.utils.rota import RollingRotaReporter, WeeklyCadence
 
 
 # Optional custom notes for the report, specific to individual teams.
@@ -22,6 +23,11 @@ TEAM_NOTES = {
         "dependency and security updates\n"
         "  • check each repo for vulnerabilities and address"
     ),
+}
+
+# Optional non-default cadence, specific to individual teams.
+TEAM_CADENCE = {
+    "Team RAP": WeeklyCadence(weekday=2),  # Wednesday
 }
 
 
@@ -48,6 +54,13 @@ class UpdateDependenciesReporter(RollingRotaReporter):
             f"On duty {this_or_next} week "
             f"({self.format_interval(interval_start)}): {checker}"
         )
+
+    def format_interval(self, interval_start) -> str:
+        """Derive the full span of this interval from the cadence."""
+        interval_end = self.cadence.next_interval_start(interval_start) - timedelta(
+            days=1
+        )
+        return f"{interval_start.strftime('%d %b')}-{interval_end.strftime('%d %b')}"
 
     def report(self, *extra_texts):
         rota = self.get_rota()
@@ -103,6 +116,7 @@ def _build_reporter(
         title=f"{team_name} update-dependencies rota",
         candidates=team_members(team_name),
         state_key=f"{_slugify_team_name(team_name)}-update-dependencies",
+        cadence=TEAM_CADENCE.get(team_name, WeeklyCadence()),
         team_name=team_name,
         repos=repos,
         notes=TEAM_NOTES.get(team_name),
