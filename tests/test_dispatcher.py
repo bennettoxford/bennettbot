@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from mocket import Mocket, Mocketizer
 from mocket.mockhttp import Entry
+from slack_sdk.errors import SlackApiError
 
 from bennettbot import scheduler, settings
 from bennettbot.config import get_support_config
@@ -528,6 +529,31 @@ def test_successful_job_reacts_with_check_mark():
     request = get_mock_received_requests()["/api/reactions.add"][0]
     assert request["name"] == ["white_check_mark"]
     assert request["timestamp"] == ["1234567890.123456"]
+
+
+def test_failed_reaction_to_requesting_message_does_not_stop_the_job():
+    # e.g. "already_reacted", if a job is triggered more than once from the
+    # same message - a button that calls a command is clicked twice
+    build_log_dir("test_good_job")
+
+    scheduler.schedule_job(
+        "test_good_job", {}, "channel", TS, 0, message_ts="1234567890.123456"
+    )
+    job = scheduler.reserve_job()
+
+    client = slack_web_client()
+    error = SlackApiError(
+        message="Error", response=Mock(data={"error": "already_reacted"})
+    )
+    with (
+        patch.object(client, "reactions_add", side_effect=error),
+        patch("bennettbot.dispatcher.logger") as mock_logger,
+    ):
+        do_job(client, job)
+
+    mock_logger.error.assert_any_call(
+        "Failed to add reaction", emoji="white_check_mark", error=error
+    )
 
 
 def test_failed_job_reacts_with_x():

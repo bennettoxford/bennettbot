@@ -549,9 +549,23 @@ def handle_command(app, message, say, slack_config, is_im):
     Check if user has permission to run this command
     Give a thumbs-up to the message, and dispatch to another handler.
     """
-    app.client.reactions_add(
-        channel=message["channel"], timestamp=message["ts"], name="kuai-kuai-green"
-    )
+    try:
+        app.client.reactions_add(
+            channel=message["channel"], timestamp=message["ts"], name="kuai-kuai-green"
+        )
+    except SlackApiError as error:
+        if error.response.data["error"] != "already_reacted":
+            raise
+        # We tried to react to the same message again; this is harmless; don't let it stop the
+        # command from running. If it's the result of an accidental double-click on a button that
+        # runs a bot command, schedule_job will just replace the first instance with the second,
+        # it won't run the command twice. (It will queue up a second run if the command is slower
+        # and someone clicks a button again after it's started))
+        logger.info(
+            "Already reacted to message",
+            channel=message["channel"],
+            ts=message["ts"],
+        )
 
     handler = {
         "schedule_job": handle_schedule_job,

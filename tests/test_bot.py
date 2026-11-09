@@ -793,25 +793,48 @@ def test_run_command_button_with_unmatched_value_does_not_crash(mock_app):
     assert not scheduler.get_jobs()
 
 
-def test_run_command_button_unexpected_error(mock_app):
-    # Unexpected errors on a button click have no "event" key in the body
-    # (unlike a typed message), so channel/ts/message_text must come from
-    # elsewhere in the body.
-    with patch("bennettbot.bot.dispatch_command", side_effect=Exception):
+@pytest.mark.parametrize(
+    "reaction_error,expected_status,expected_job_count",
+    [
+        # Happens when the same button is clicked twice (it reacts to the
+        # same fixed message both times) - shouldn't stop the command
+        # from running.
+        ("already_reacted", 200, 1),
+        # Any other reaction failure should still error as before. Button
+        # clicks have no "event" key in the body (unlike a typed message),
+        # so this also checks that channel/message_text still get reported
+        # correctly from elsewhere in the body.
+        ("something_else", 500, 0),
+    ],
+)
+def test_run_command_button_reaction_failure(
+    mock_app, reaction_error, expected_status, expected_job_count
+):
+    side_effect = SlackApiError(
+        message="Error", response=Mock(data={"error": reaction_error})
+    )
+    if expected_status == 500:
+        # the error handler's own reactions_add("x") call still needs to succeed
+        side_effect = [side_effect, Mock()]
+
+    with patch.object(mock_app.client, "reactions_add", side_effect=side_effect):
         handle_block_action(
             mock_app,
             action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
             value="test do good job",
-            expected_status=500,
+            expected_status=expected_status,
         )
-    assert_slack_client_sends_messages(
-        messages_kwargs=[
-            {
-                "channel": "C0002",
-                "text": "Unexpected error: Exception()\nwhile responding to message `test do good job`",
-            }
-        ],
-    )
+
+    assert len(scheduler.get_jobs_of_type("test_good_job")) == expected_job_count
+    if expected_status == 500:
+        assert_slack_client_sends_messages(
+            messages_kwargs=[
+                {
+                    "channel": "C0002",
+                    "text": "while responding to message `test do good job`",
+                }
+            ],
+        )
 
 
 def test_unexpected_error(mock_app):
