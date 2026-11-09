@@ -95,9 +95,9 @@ def test_report_rota_includes_notes_after_the_links_for_teams_that_have_them(
 
     blocks = json.loads(jobs.report_rota("Team RAP"))
 
-    # header, duty, link, fields, notes
-    assert len(blocks) == 5
-    notes_text = blocks[-1]["text"]["text"]
+    # header, duty, link, fields, notes, advance footnote
+    assert len(blocks) == 6
+    notes_text = blocks[-2]["text"]["text"]
     assert "Here's a reminder" in notes_text
     assert "  • check each repo for vulnerabilities and address" in notes_text
 
@@ -110,6 +110,38 @@ def test_report_rota_omits_notes_for_teams_without_them(freezer, monkeypatch, tm
 
     # header, duty, link, fields - nothing trailing
     assert len(blocks) == 4
+
+
+@pytest.mark.parametrize(
+    "team_name,state_key,expected_advance_command",
+    [
+        (TEAM_NAME, "team-dummy-update-dependencies", None),
+        ("Team RAP", "team-rap-update-dependencies", "rotas rap-dependencies advance"),
+    ],
+)
+def test_report_rota_advance_footnote(
+    freezer, monkeypatch, tmp_path, team_name, state_key, expected_advance_command
+):
+    # Test that report_rota() wires up each team's configured advance command (or lack
+    # of one) correctly.
+    freezer.move_to("2024-03-25")  # Monday, ISO week 13
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
+    monkeypatch.setattr(
+        jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
+    )
+    monkeypatch.setattr(
+        jobs.UpdateDependenciesReporter,
+        "_state_path",
+        lambda self: tmp_path / f"{state_key}.json",
+    )
+
+    blocks = json.loads(jobs.report_rota(team_name))
+
+    actions_blocks = [block for block in blocks if block["type"] == "actions"]
+    if expected_advance_command is None:
+        assert not actions_blocks
+    else:
+        assert actions_blocks[-1]["elements"][0]["value"] == expected_advance_command
 
 
 def test_duty_text_shows_the_full_week_according_to_cadence(
@@ -274,7 +306,7 @@ def test_advance_rota_shifts_the_rota(freezer, monkeypatch, tmp_path):
 
     message = jobs.advance_rota(TEAM_NAME)
 
-    assert "Dummy C" in message
+    assert DUMMY_C.formatted_slack_username in message
     assert "update-dependencies duty" in message
 
     blocks = json.loads(jobs.report_rota(TEAM_NAME))

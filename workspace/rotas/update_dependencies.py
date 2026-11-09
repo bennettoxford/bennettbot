@@ -30,6 +30,13 @@ TEAM_CADENCE = {
     "Team RAP": WeeklyCadence(weekday=2),  # Wednesday
 }
 
+# Slack command to advance each team's rota, shown in the report footnote
+# when the person on duty isn't available. Mirrors the commands wired up in
+# job_configs.py.
+TEAM_ADVANCE_COMMAND = {
+    "Team RAP": "rotas rap-dependencies advance",
+}
+
 
 class UpdateDependenciesReporter(RollingRotaReporter):
     def __init__(
@@ -83,6 +90,10 @@ class UpdateDependenciesReporter(RollingRotaReporter):
         if self.notes:
             blocks.append(get_text_block(self.notes))
 
+        footnote_block = self._advance_footnote_block()
+        if footnote_block:
+            blocks.append(footnote_block)
+
         return json.dumps(blocks, indent=2)
 
     def _all_open_prs_link_text(self) -> str:
@@ -117,6 +128,7 @@ def _build_reporter(
         candidates=team_members(team_name),
         state_key=f"{_slugify_team_name(team_name)}-update-dependencies",
         cadence=TEAM_CADENCE.get(team_name, WeeklyCadence()),
+        advance_command=TEAM_ADVANCE_COMMAND.get(team_name),
         team_name=team_name,
         repos=repos,
         notes=TEAM_NOTES.get(team_name),

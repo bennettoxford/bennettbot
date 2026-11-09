@@ -5,7 +5,10 @@ from itertools import cycle, islice
 from pathlib import Path
 
 from bennettbot import settings
-from workspace.utils.blocks import get_basic_header_and_text_blocks
+from workspace.utils.blocks import (
+    get_basic_header_and_text_blocks,
+    get_run_command_button_block,
+)
 from workspace.utils.spreadsheets import get_data_from_sheet
 
 
@@ -120,11 +123,25 @@ class RollingRotaReporter(RotaReporter):
         candidates: list,
         state_key: str,
         cadence=WeeklyCadence(),
+        advance_command: str | None = None,
     ):
         super().__init__(title)
         self.candidates = candidates
         self.state_key = state_key
         self.cadence = cadence
+        self.advance_command = advance_command
+
+    def _advance_footnote_block(self) -> dict | None:
+        """An "Advance the rota" button, shown after the report when
+        `advance_command` is set - e.g. for when the person on duty isn't
+        available. Clicking it runs `advance_command` exactly as if the
+        user had typed it."""
+        if not self.advance_command:
+            return None
+        return get_run_command_button_block(
+            button_text="Not available? Advance the rota",
+            command=self.advance_command,
+        )
 
     def _state_path(self) -> Path:
         return settings.WRITEABLE_DIR / "rota_state" / f"{self.state_key}.json"
@@ -150,7 +167,7 @@ class RollingRotaReporter(RotaReporter):
         this_interval = self.cadence.interval_start(date.today())
         checker = self.get_rota()[this_interval]
         duty = f"{duty_name} duty" if duty_name else "duty"
-        return f"Rota advanced: {checker.human_readable} is now on {duty}."
+        return f"Rota advanced: {checker.formatted_slack_username} is now on {duty}."
 
     def now(self, duty_name: str | None = None) -> str:
         """
@@ -183,16 +200,15 @@ class RollingRotaReporter(RotaReporter):
         rota = self.get_rota()
         this_interval, next_interval = sorted(rota)
 
-        blocks = get_basic_header_and_text_blocks(
-            header_text=self.title,
-            texts=[
-                self.get_rota_text_for_interval(
-                    rota, this_interval, this_or_next="this"
-                ),
-                self.get_rota_text_for_interval(
-                    rota, next_interval, this_or_next="next"
-                ),
-                *extra_texts,
-            ],
-        )
+        texts = [
+            self.get_rota_text_for_interval(rota, this_interval, this_or_next="this"),
+            self.get_rota_text_for_interval(rota, next_interval, this_or_next="next"),
+            *extra_texts,
+        ]
+        blocks = get_basic_header_and_text_blocks(header_text=self.title, texts=texts)
+
+        footnote_block = self._advance_footnote_block()
+        if footnote_block:
+            blocks.append(footnote_block)
+
         return json.dumps(blocks, indent=2)
