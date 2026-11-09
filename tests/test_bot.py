@@ -765,6 +765,55 @@ def test_unhandled_block_action(mock_app):
     assert resp.body == "Unhandled message"
 
 
+def test_run_command_button_runs_the_command_like_a_typed_message(mock_app):
+    assert not scheduler.get_jobs()
+
+    handle_block_action(
+        mock_app,
+        action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+        value="test do good job",
+    )
+
+    jj = scheduler.get_jobs_of_type("test_good_job")
+    assert len(jj) == 1
+    assert_job_matches(jj[0], "test_good_job", {}, "C0002", T(60), None)
+    assert_slack_client_reacts_to_message(1)
+
+
+def test_run_command_button_with_unmatched_value_does_not_crash(mock_app):
+    # Shouldn't happen in practice, since the button's value is
+    # always a known command, but a config change could leave a stale button
+    # pointing at a command that no longer exists.
+    handle_block_action(
+        mock_app,
+        action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+        value="not a real command",
+    )
+
+    assert not scheduler.get_jobs()
+
+
+def test_run_command_button_unexpected_error(mock_app):
+    # Unexpected errors on a button click have no "event" key in the body
+    # (unlike a typed message), so channel/ts/message_text must come from
+    # elsewhere in the body.
+    with patch("bennettbot.bot.dispatch_command", side_effect=Exception):
+        handle_block_action(
+            mock_app,
+            action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+            value="test do good job",
+            expected_status=500,
+        )
+    assert_slack_client_sends_messages(
+        messages_kwargs=[
+            {
+                "channel": "C0002",
+                "text": "Unexpected error: Exception()\nwhile responding to message `test do good job`",
+            }
+        ],
+    )
+
+
 def test_unexpected_error(mock_app):
     # Unexpected errors post a X reaction and respond with the error
     with patch("bennettbot.bot.handle_namespace_help", side_effect=Exception):
@@ -959,6 +1008,52 @@ def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     resp = mock_app.dispatch(request)
     # process_before_response=True (set in get_mock_app) makes dispatch() run listeners
     # synchronously, so resp is fully settled by the time dispatch() returns.
+    assert resp.status == expected_status
+    return resp
+
+
+def handle_block_action(
+    mock_app,
+    *,
+    action_id,
+    value,
+    user="W111",
+    channel="C0002",
+    message_ts="1596183880.004200",
+    expected_status=200,
+):
+    body = {
+        "type": "block_actions",
+        "team": {"id": "T111", "domain": "test"},
+        "user": {"id": user, "username": "test", "team_id": "T111"},
+        "api_app_id": "A111",
+        "token": "verification_token",
+        "container": {"type": "message", "message_ts": message_ts},
+        "trigger_id": "111.222.333",
+        "channel": {"id": channel, "name": "test-channel"},
+        "message": {"type": "message", "ts": message_ts},
+        "actions": [
+            {
+                "action_id": action_id,
+                "block_id": "block1",
+                "type": "button",
+                "value": value,
+                "action_ts": message_ts,
+            }
+        ],
+    }
+    timestamp, body_text = str(int(time.time())), json.dumps(body)
+    signature = SignatureVerifier("secret").generate_signature(
+        body=body_text,
+        timestamp=timestamp,
+    )
+    headers = {
+        "content-type": ["application/json"],
+        "x-slack-signature": [signature],
+        "x-slack-request-timestamp": [timestamp],
+    }
+    request = BoltRequest(body=body_text, headers=headers)
+    resp = mock_app.dispatch(request)
     assert resp.status == expected_status
     return resp
 

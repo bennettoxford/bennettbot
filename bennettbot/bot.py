@@ -10,6 +10,7 @@ from slack_bolt.util.utils import get_boot_message
 from slack_sdk.errors import SlackApiError
 
 from workspace.techsupport.jobs import get_dates_from_config as get_tech_support_dates
+from workspace.utils.blocks import RUN_COMMAND_BUTTON_ACTION_ID
 
 from . import job_configs, scheduler, settings
 from .config import get_support_config
@@ -103,6 +104,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
     - A single listener for slack requests that mention the bot
     - A single listener for slack requests in DMs with the bot
     - A tech-support listener
+    - A listener for "run this bot command" button clicks
     - An error handler
     - A listener for new channels
 
@@ -156,6 +158,27 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
         # acknowledge this message to avoid slack retrying in 3s
         ack()
         _listener(event, say, is_im=True)
+
+    @app.action(RUN_COMMAND_BUTTON_ACTION_ID)
+    def run_command_button_listener(ack, body, action, say):
+        """Run the bot command carried by a clicked button's `value`,
+        as if a user had typed it themselves."""
+        ack()
+        command = action["value"]
+        event = {
+            "user": body["user"]["id"],
+            "channel": body["channel"]["id"],
+            "ts": body["message"]["ts"],
+            "text": command,
+        }
+        logger.info(
+            "Received run-command button click", command=command, user=event["user"]
+        )
+        if not dispatch_command(app, event, say, command, config, internal_user_ids):
+            logger.error(
+                "Run-command button value didn't match any known command",
+                command=command,
+            )
 
     def _listener(event, say, is_im=False):
         # Find the text that follows the bot mention, which can be in the form of
@@ -337,11 +360,23 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             # nothing needs to handle).
             return BoltResponse(status=200, body="Unhandled message")
 
-        event = body.get("event", {})
-        if "message" in event:
-            message_text = event["message"]["text"]
+        event = body.get("event")
+        if event:
+            channel = event["channel"]
+            ts = event["ts"]
+            message_text = (
+                event["message"]["text"]
+                if "message" in event
+                else event.get("text", "")
+            )
         else:
-            message_text = event.get("text", "")
+            # Interactive payloads (e.g. a "run this bot command" button
+            # click) have no "event" key; channel/message/text info
+            # lives elsewhere in the body instead.
+            channel = body["channel"]["id"]
+            ts = body["message"]["ts"]
+            actions = body.get("actions", [])
+            message_text = actions[0].get("value", "") if actions else ""
 
         if (
             isinstance(error, SlackApiError)
@@ -359,8 +394,6 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             )
         else:
             # other error patterns
-            channel = body["event"]["channel"]
-            ts = body["event"]["ts"]
             logger.error("Unexpected error", error=error, body=body)
             app.client.reactions_add(channel=channel, timestamp=ts, name="x")
             notify_slack(
