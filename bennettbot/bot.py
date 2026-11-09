@@ -210,14 +210,10 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             handle_remove_job(app, event, say, text)
             return
 
-        for slack_config in config["slack"]:
-            if slack_config["regex"].match(text):
-                if not user_has_permission(
-                    app, event, say, text, config["restricted"], internal_user_ids
-                ):
-                    return
-                handle_command(app, event, say, slack_config, is_im=is_im)
-                return
+        if dispatch_command(
+            app, event, say, text, config, internal_user_ids, is_im=is_im
+        ):
+            return
 
         for namespace, help_config in config["help"].items():
             for pattern in [f"^{namespace} help$", f"^help {namespace}$"]:
@@ -494,6 +490,24 @@ def user_has_permission(app, event, say, text, restricted_config, internal_user_
         f":no_entry: Sorry, only Bennett Institute users are allowed to run `{namespace}` commands."
     )
     logger.info("Restricted command called by guest user", command=text, user=user_id)
+    return False
+
+
+def dispatch_command(app, event, say, text, config, internal_user_ids, is_im=False):
+    """
+    Find the slack command matching `text` and dispatch to its handler,
+    respecting permissions.
+
+    Returns True if a command matched `text` (regardless of whether the user
+    had permission to run it), False if nothing matched.
+    """
+    for slack_config in config["slack"]:
+        if slack_config["regex"].match(text):
+            if user_has_permission(
+                app, event, say, text, config["restricted"], internal_user_ids
+            ):
+                handle_command(app, event, say, slack_config, is_im=is_im)
+            return True
     return False
 
 
