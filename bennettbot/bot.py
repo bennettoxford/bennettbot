@@ -560,7 +560,7 @@ def handle_command(app, message, say, slack_config, is_im):
         # command from running. If it's the result of an accidental double-click on a button that
         # runs a bot command, schedule_job will just replace the first instance with the second,
         # it won't run the command twice. (It will queue up a second run if the command is slower
-        # and someone clicks a button again after it's started))
+        # and someone clicks a button again after it's started)
         logger.info(
             "Already reacted to message",
             channel=message["channel"],
