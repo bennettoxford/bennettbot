@@ -203,8 +203,13 @@ class JobDispatcher:
             self.slack_client.reactions_add(
                 channel=self.job["channel"], timestamp=message_ts, name=emoji
             )
-        except Exception:  # pragma: no cover
-            logger.exception("Failed to add reaction", emoji=emoji)
+        except Exception as error:
+            # The most likely error is an "already_reacted" error, e.g. if a button that
+            # triggers a job is clicked more than once from the same message, but we catch
+            # any exception as we don't want any unexpected error here to block running the
+            # job itself. Log error rather than exception as we don't need the traceback in
+            # logs.
+            logger.error("Failed to add reaction", emoji=emoji, error=error)
 
     def set_up_cwd(self):
         """Ensure cwd exists, and maybe refresh fabfile."""

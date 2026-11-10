@@ -10,6 +10,7 @@ from slack_bolt.util.utils import get_boot_message
 from slack_sdk.errors import SlackApiError
 
 from workspace.techsupport.jobs import get_dates_from_config as get_tech_support_dates
+from workspace.utils.blocks import RUN_COMMAND_BUTTON_ACTION_ID
 
 from . import job_configs, scheduler, settings
 from .config import get_support_config
@@ -103,6 +104,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
     - A single listener for slack requests that mention the bot
     - A single listener for slack requests in DMs with the bot
     - A tech-support listener
+    - A listener for "run this bot command" button clicks
     - An error handler
     - A listener for new channels
 
@@ -157,6 +159,27 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
         ack()
         _listener(event, say, is_im=True)
 
+    @app.action(RUN_COMMAND_BUTTON_ACTION_ID)
+    def run_command_button_listener(ack, body, action, say):
+        """Run the bot command carried by a clicked button's `value`,
+        as if a user had typed it themselves."""
+        ack()
+        command = action["value"]
+        event = {
+            "user": body["user"]["id"],
+            "channel": body["channel"]["id"],
+            "ts": body["message"]["ts"],
+            "text": command,
+        }
+        logger.info(
+            "Received run-command button click", command=command, user=event["user"]
+        )
+        if not dispatch_command(app, event, say, command, config, internal_user_ids):
+            logger.error(
+                "Run-command button value didn't match any known command",
+                command=command,
+            )
+
     def _listener(event, say, is_im=False):
         # Find the text that follows the bot mention, which can be in the form of
         # <@AB1234|bot_name> or <@AB1234>
@@ -210,14 +233,10 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             handle_remove_job(app, event, say, text)
             return
 
-        for slack_config in config["slack"]:
-            if slack_config["regex"].match(text):
-                if not user_has_permission(
-                    app, event, say, text, config["restricted"], internal_user_ids
-                ):
-                    return
-                handle_command(app, event, say, slack_config, is_im=is_im)
-                return
+        if dispatch_command(
+            app, event, say, text, config, internal_user_ids, is_im=is_im
+        ):
+            return
 
         for namespace, help_config in config["help"].items():
             for pattern in [f"^{namespace} help$", f"^help {namespace}$"]:
@@ -341,11 +360,23 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             # nothing needs to handle).
             return BoltResponse(status=200, body="Unhandled message")
 
-        event = body.get("event", {})
-        if "message" in event:
-            message_text = event["message"]["text"]
+        event = body.get("event")
+        if event:
+            channel = event["channel"]
+            ts = event["ts"]
+            message_text = (
+                event["message"]["text"]
+                if "message" in event
+                else event.get("text", "")
+            )
         else:
-            message_text = event.get("text", "")
+            # Interactive payloads (e.g. a "run this bot command" button
+            # click) have no "event" key; channel/message/text info
+            # lives elsewhere in the body instead.
+            channel = body["channel"]["id"]
+            ts = body["message"]["ts"]
+            actions = body.get("actions", [])
+            message_text = actions[0].get("value", "") if actions else ""
 
         if (
             isinstance(error, SlackApiError)
@@ -363,8 +394,6 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             )
         else:
             # other error patterns
-            channel = body["event"]["channel"]
-            ts = body["event"]["ts"]
             logger.error("Unexpected error", error=error, body=body)
             app.client.reactions_add(channel=channel, timestamp=ts, name="x")
             notify_slack(
@@ -497,14 +526,46 @@ def user_has_permission(app, event, say, text, restricted_config, internal_user_
     return False
 
 
+def dispatch_command(app, event, say, text, config, internal_user_ids, is_im=False):
+    """
+    Find the slack command matching `text` and dispatch to its handler,
+    respecting permissions.
+
+    Returns True if a command matched `text` (regardless of whether the user
+    had permission to run it), False if nothing matched.
+    """
+    for slack_config in config["slack"]:
+        if slack_config["regex"].match(text):
+            if user_has_permission(
+                app, event, say, text, config["restricted"], internal_user_ids
+            ):
+                handle_command(app, event, say, slack_config, is_im=is_im)
+            return True
+    return False
+
+
 def handle_command(app, message, say, slack_config, is_im):
     """
     Check if user has permission to run this command
     Give a thumbs-up to the message, and dispatch to another handler.
     """
-    app.client.reactions_add(
-        channel=message["channel"], timestamp=message["ts"], name="kuai-kuai-green"
-    )
+    try:
+        app.client.reactions_add(
+            channel=message["channel"], timestamp=message["ts"], name="kuai-kuai-green"
+        )
+    except SlackApiError as error:
+        if error.response.data["error"] != "already_reacted":
+            raise
+        # We tried to react to the same message again; this is harmless; don't let it stop the
+        # command from running. If it's the result of an accidental double-click on a button that
+        # runs a bot command, schedule_job will just replace the first instance with the second,
+        # it won't run the command twice. (It will queue up a second run if the command is slower
+        # and someone clicks a button again after it's started)
+        logger.info(
+            "Already reacted to message",
+            channel=message["channel"],
+            ts=message["ts"],
+        )
 
     handler = {
         "schedule_job": handle_schedule_job,

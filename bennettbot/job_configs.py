@@ -648,19 +648,19 @@ raw_config = {
         },
         "slack": [
             {
-                "command": "rap-update-deps report",
+                "command": "rap-dependencies report",
                 "help": "Report who's next on Team RAP's update-dependencies rota",
                 "action": "schedule_job",
                 "job_type": "rap_update_dependencies_report",
             },
             {
-                "command": "rap-update-deps advance",
+                "command": "rap-dependencies advance",
                 "help": "Shift the Team RAP update-dependencies rota forward by one, e.g. if this week's person is unavailable",
                 "action": "schedule_job",
                 "job_type": "rap_update_dependencies_advance",
             },
             {
-                "command": "rap-update-deps now",
+                "command": "rap-dependencies now",
                 "help": "Report who's on Team RAP's update-dependencies duty right now",
                 "action": "schedule_job",
                 "job_type": "rap_update_dependencies_now",

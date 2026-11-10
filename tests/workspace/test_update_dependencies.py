@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from bennettbot.job_configs import raw_config
 from workspace.rotas import update_dependencies as jobs
 from workspace.utils.people import Person
 
@@ -15,8 +16,8 @@ TEAM_NAME = "Team Dummy"
 REPOS = ["org/repo-one", "org/repo-two"]
 
 DUTY_TEXT = (
-    "On duty this week (25 Mar-29 Mar): <@UDUMMYB0001>\n"
-    "On duty next week (01 Apr-05 Apr): Dummy C"
+    "On duty this week (25 Mar-31 Mar): <@UDUMMYB0001>\n"
+    "On duty next week (01 Apr-07 Apr): Dummy C"
 )
 
 ALL_OPEN_PRS_LINK_TEXT = (
@@ -95,9 +96,9 @@ def test_report_rota_includes_notes_after_the_links_for_teams_that_have_them(
 
     blocks = json.loads(jobs.report_rota("Team RAP"))
 
-    # header, duty, link, fields, notes
-    assert len(blocks) == 5
-    notes_text = blocks[-1]["text"]["text"]
+    # header, duty, link, fields, notes, advance footnote
+    assert len(blocks) == 6
+    notes_text = blocks[-2]["text"]["text"]
     assert "Here's a reminder" in notes_text
     assert "  • check each repo for vulnerabilities and address" in notes_text
 
@@ -110,6 +111,66 @@ def test_report_rota_omits_notes_for_teams_without_them(freezer, monkeypatch, tm
 
     # header, duty, link, fields - nothing trailing
     assert len(blocks) == 4
+
+
+@pytest.mark.parametrize(
+    "team_name,state_key,expected_advance_command",
+    [
+        (TEAM_NAME, "team-dummy-update-dependencies", None),
+        ("Team RAP", "team-rap-update-dependencies", "rotas rap-dependencies advance"),
+    ],
+)
+def test_report_rota_advance_footnote(
+    freezer, monkeypatch, tmp_path, team_name, state_key, expected_advance_command
+):
+    # Test that report_rota() wires up each team's configured advance command (or lack
+    # of one) correctly.
+    freezer.move_to("2024-03-25")  # Monday, ISO week 13
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
+    monkeypatch.setattr(
+        jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
+    )
+    monkeypatch.setattr(
+        jobs.UpdateDependenciesReporter,
+        "_state_path",
+        lambda self: tmp_path / f"{state_key}.json",
+    )
+
+    blocks = json.loads(jobs.report_rota(team_name))
+
+    actions_blocks = [block for block in blocks if block["type"] == "actions"]
+    if expected_advance_command is None:
+        assert not actions_blocks
+    else:
+        assert actions_blocks[-1]["elements"][0]["value"] == expected_advance_command
+        assert expected_advance_command in {
+            slack_command["command"]
+            for namespace in raw_config.values()
+            for slack_command in namespace["slack"]
+        }
+
+
+def test_duty_text_shows_the_full_week_according_to_cadence(
+    freezer, monkeypatch, tmp_path
+):
+    # Team RAP's rota runs Wednesday-Tuesday, so the displayed range should
+    # follow the cadence's anchor day.
+    freezer.move_to("2024-03-25")  # Monday, falls inside the 20-26 Mar interval
+    monkeypatch.setattr(jobs, "team_members", lambda team_name: TEAM_MEMBERS)
+    monkeypatch.setattr(
+        jobs.repos_config, "get_repo_full_names_for_team", lambda team_name: REPOS
+    )
+    monkeypatch.setattr(
+        jobs.UpdateDependenciesReporter,
+        "_state_path",
+        lambda self: tmp_path / "team-rap-update-dependencies.json",
+    )
+
+    blocks = json.loads(jobs.report_rota("Team RAP"))
+
+    duty_text = blocks[1]["text"]["text"]
+    assert "On duty this week (20 Mar-26 Mar)" in duty_text
+    assert "On duty next week (27 Mar-02 Apr)" in duty_text
 
 
 def test_report_rota_always_uses_full_repo_names(freezer, monkeypatch, tmp_path):
@@ -251,7 +312,7 @@ def test_advance_rota_shifts_the_rota(freezer, monkeypatch, tmp_path):
 
     message = jobs.advance_rota(TEAM_NAME)
 
-    assert "Dummy C" in message
+    assert DUMMY_C.formatted_slack_username in message
     assert "update-dependencies duty" in message
 
     blocks = json.loads(jobs.report_rota(TEAM_NAME))

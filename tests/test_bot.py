@@ -724,45 +724,86 @@ def test_no_listener_found(mock_app):
 
 
 def test_unhandled_block_action(mock_app):
-    # Interactive payloads have a different shape to events, with no
-    # "event" key at all. The error handler must not crash trying to look
-    # for a message in a payload shape that doesn't have one.
-    body = {
-        "type": "block_actions",
-        "team": {"id": "T111", "domain": "test"},
-        "user": {"id": "W111", "username": "test", "team_id": "T111"},
-        "api_app_id": "A111",
-        "token": "verification_token",
-        "container": {"type": "message", "message_ts": "1596183880.004200"},
-        "trigger_id": "111.222.333",
-        "channel": {"id": "C0002", "name": "test-channel"},
-        "message": {"type": "message", "ts": "1596183880.004200"},
-        "actions": [
-            {
-                "action_id": "rap_update_deps_repo_0",
-                "block_id": "block1",
-                "type": "checkboxes",
-                "selected_options": [],
-                "action_ts": "1596183880.004200",
-            }
-        ],
-    }
-    timestamp, body_text = str(int(time.time())), json.dumps(body)
-    signature = SignatureVerifier("secret").generate_signature(
-        body=body_text,
-        timestamp=timestamp,
+    # Interactive payloads should be ignored if there is no matching listener.
+    resp = handle_block_action(
+        mock_app,
+        action_id="unregistered_action_id",
+        value="",
+        expected_status=200,
     )
-    headers = {
-        "content-type": ["application/json"],
-        "x-slack-signature": [signature],
-        "x-slack-request-timestamp": [timestamp],
-    }
-    request = BoltRequest(body=body_text, headers=headers)
-
-    resp = mock_app.dispatch(request)
-
-    assert resp.status == 200
     assert resp.body == "Unhandled message"
+
+
+def test_run_command_button_runs_the_command_like_a_typed_message(mock_app):
+    assert not scheduler.get_jobs()
+
+    handle_block_action(
+        mock_app,
+        action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+        value="test do good job",
+    )
+
+    jj = scheduler.get_jobs_of_type("test_good_job")
+    assert len(jj) == 1
+    assert_job_matches(jj[0], "test_good_job", {}, "C0002", T(60), None)
+    assert_slack_client_reacts_to_message(1)
+
+
+def test_run_command_button_with_unmatched_value_does_not_crash(mock_app):
+    # Shouldn't happen in practice, since the button's value is
+    # always a known command, but a config change could leave a stale button
+    # pointing at a command that no longer exists.
+    handle_block_action(
+        mock_app,
+        action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+        value="not a real command",
+    )
+
+    assert not scheduler.get_jobs()
+
+
+@pytest.mark.parametrize(
+    "reaction_error,expected_status,expected_job_count",
+    [
+        # Happens when the same button is clicked twice (it reacts to the
+        # same fixed message both times) - shouldn't stop the command
+        # from running.
+        ("already_reacted", 200, 1),
+        # Any other reaction failure should still error as before. Button
+        # clicks have no "event" key in the body (unlike a typed message),
+        # so this also checks that channel/message_text still get reported
+        # correctly from elsewhere in the body.
+        ("something_else", 500, 0),
+    ],
+)
+def test_run_command_button_reaction_failure(
+    mock_app, reaction_error, expected_status, expected_job_count
+):
+    side_effect = SlackApiError(
+        message="Error", response=Mock(data={"error": reaction_error})
+    )
+    if expected_status == 500:
+        # the error handler's own reactions_add("x") call still needs to succeed
+        side_effect = [side_effect, Mock()]
+
+    with patch.object(mock_app.client, "reactions_add", side_effect=side_effect):
+        handle_block_action(
+            mock_app,
+            action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+            value="test do good job",
+            expected_status=expected_status,
+        )
+
+    assert len(scheduler.get_jobs_of_type("test_good_job")) == expected_job_count
+    if expected_status == 500:
+        assert_slack_client_sends_messages(
+            messages_kwargs=[
+                {
+                    "channel": "C0002",
+                    "text": "while responding to message `test do good job`",
+                }
+            ],
+        )
 
 
 def test_unexpected_error(mock_app):
@@ -959,6 +1000,52 @@ def handle_event(mock_app, event_type, event_kwargs, expected_status=200):
     resp = mock_app.dispatch(request)
     # process_before_response=True (set in get_mock_app) makes dispatch() run listeners
     # synchronously, so resp is fully settled by the time dispatch() returns.
+    assert resp.status == expected_status
+    return resp
+
+
+def handle_block_action(
+    mock_app,
+    *,
+    action_id,
+    value,
+    user="W111",
+    channel="C0002",
+    message_ts="1596183880.004200",
+    expected_status=200,
+):
+    body = {
+        "type": "block_actions",
+        "team": {"id": "T111", "domain": "test"},
+        "user": {"id": user, "username": "test", "team_id": "T111"},
+        "api_app_id": "A111",
+        "token": "verification_token",
+        "container": {"type": "message", "message_ts": message_ts},
+        "trigger_id": "111.222.333",
+        "channel": {"id": channel, "name": "test-channel"},
+        "message": {"type": "message", "ts": message_ts},
+        "actions": [
+            {
+                "action_id": action_id,
+                "block_id": "block1",
+                "type": "button",
+                "value": value,
+                "action_ts": message_ts,
+            }
+        ],
+    }
+    timestamp, body_text = str(int(time.time())), json.dumps(body)
+    signature = SignatureVerifier("secret").generate_signature(
+        body=body_text,
+        timestamp=timestamp,
+    )
+    headers = {
+        "content-type": ["application/json"],
+        "x-slack-signature": [signature],
+        "x-slack-request-timestamp": [timestamp],
+    }
+    request = BoltRequest(body=body_text, headers=headers)
+    resp = mock_app.dispatch(request)
     assert resp.status == expected_status
     return resp
 

@@ -12,6 +12,36 @@ def get_header_block(header_text, text_type="plain_text"):
     return get_text_block(header_text, block_type="header", text_type=text_type)
 
 
+# action_id for a button that runs a bot command - bennettbot.bot registers a
+# single Slack action listener for this id, which runs the clicked button's
+# `value` (a bot command string, e.g. "rotas rap-dependencies advance")
+# exactly as if the user had typed it. Any report can add a button for an
+# existing command this way - e.g. a rota's "advance" button, or (in future)
+# buttons on a job-failure report that run "showlogs head/tail/all".
+RUN_COMMAND_BUTTON_ACTION_ID = "run_bot_command"
+
+
+def get_run_command_button_block(button_text: str, command: str, style=None):
+    """An "actions" block whose button runs `command` - a full bot command,
+    e.g. "rotas rap-dependencies advance" - as if the user had typed it.
+
+    `style` can be "primary" (green) or "danger" (red) to make the button
+    stand out; omit it for Slack's default (neutral) styling.
+    """
+    button = {
+        "type": "button",
+        "text": {"type": "plain_text", "text": button_text},
+        "action_id": RUN_COMMAND_BUTTON_ACTION_ID,
+        "value": command,
+    }
+    if style:
+        button["style"] = style
+    return {
+        "type": "actions",
+        "elements": [button],
+    }
+
+
 def get_basic_header_and_text_blocks(
     header_text: str, texts: list | str, text_type="mrkdwn"
 ):

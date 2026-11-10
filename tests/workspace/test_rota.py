@@ -1,9 +1,12 @@
 import json
 from datetime import date, timedelta
 
+import pytest
+
 from bennettbot import settings
+from workspace.utils.blocks import RUN_COMMAND_BUTTON_ACTION_ID
 from workspace.utils.people import Person
-from workspace.utils.rota import RollingRotaReporter
+from workspace.utils.rota import RollingRotaReporter, WeeklyCadence
 
 
 PERSON_A = Person("person-a", "UPERSONA001", "Person A")
@@ -37,10 +40,14 @@ class FakeFortnightlyCadence:
         return interval_start + timedelta(weeks=2)
 
 
-def make_reporter(tmp_path, state_key="dummy-rota", cadence=None):
+def make_reporter(tmp_path, state_key="dummy-rota", cadence=None, advance_command=None):
     kwargs = {} if cadence is None else {"cadence": cadence}
     reporter = DummyRollingRotaReporter(
-        title="Dummy rota", candidates=CANDIDATES, state_key=state_key, **kwargs
+        title="Dummy rota",
+        candidates=CANDIDATES,
+        state_key=state_key,
+        advance_command=advance_command,
+        **kwargs,
     )
     reporter._state_path = lambda: tmp_path / f"{state_key}.json"
     return reporter
@@ -86,7 +93,7 @@ def test_advance_shifts_the_rota_by_one_candidate(tmp_path, freezer):
     after = make_reporter(tmp_path).get_rota()[date(2024, 3, 25)]
     expected_index = (CANDIDATES.index(before) + 1) % len(CANDIDATES)
     assert after == CANDIDATES[expected_index]
-    assert after.human_readable in message
+    assert after.formatted_slack_username in message
 
 
 def test_now_names_who_is_on_duty(tmp_path, freezer):
@@ -137,6 +144,62 @@ def test_state_is_isolated_per_state_key(tmp_path, freezer):
     assert rota_one[date(2024, 3, 25)] != rota_two[date(2024, 3, 25)]
 
 
+@pytest.mark.parametrize(
+    "weekday,d,expected",
+    [
+        # Defaults to Monday-anchored.
+        (None, date(2024, 3, 28), date(2024, 3, 25)),  # Thursday -> Monday
+        # Anchored to Wednesday (weekday=2). The most recent Wednesday on or
+        # before each of these dates is 2024-03-27.
+        (2, date(2024, 3, 27), date(2024, 3, 27)),  # Wed itself
+        (2, date(2024, 3, 28), date(2024, 3, 27)),  # Thu
+        (2, date(2024, 4, 1), date(2024, 3, 27)),  # Mon
+        (2, date(2024, 4, 3), date(2024, 4, 3)),  # next Wed
+    ],
+)
+def test_weekly_cadence_interval_start(weekday, d, expected):
+    cadence = WeeklyCadence() if weekday is None else WeeklyCadence(weekday=weekday)
+
+    assert cadence.interval_start(d) == expected
+
+
+@pytest.mark.parametrize(
+    "advance_command,expected_action_block",
+    [
+        (None, None),
+        (
+            "some-namespace some-command",
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Not available? Advance the rota",
+                        },
+                        "action_id": RUN_COMMAND_BUTTON_ACTION_ID,
+                        "value": "some-namespace some-command",
+                    }
+                ],
+            },
+        ),
+    ],
+)
+def test_report_advance_footnote(
+    tmp_path, freezer, advance_command, expected_action_block
+):
+    freezer.move_to("2024-03-25")
+    reporter = make_reporter(tmp_path, advance_command=advance_command)
+
+    blocks = json.loads(reporter.report())
+
+    if expected_action_block is None:
+        assert not any(block["type"] == "actions" for block in blocks)
+    else:
+        assert blocks[-1] == expected_action_block
+
+
 def test_report_includes_rota_text_for_this_and_next(tmp_path, freezer):
     freezer.move_to("2024-03-25")
     reporter = make_reporter(tmp_path)
@@ -171,4 +234,4 @@ def test_get_rota_and_advance_use_the_cadence_for_all_date_math(tmp_path, freeze
 
     freezer.move_to("2024-03-25")
     message = make_reporter(tmp_path, cadence=cadence).advance()
-    assert CANDIDATES[(1 + 1) % len(CANDIDATES)].human_readable in message
+    assert CANDIDATES[(1 + 1) % len(CANDIDATES)].formatted_slack_username in message

@@ -1,5 +1,6 @@
 import argparse
 import json
+from datetime import timedelta
 from urllib.parse import quote_plus
 
 from workspace.utils import repos_config
@@ -9,7 +10,7 @@ from workspace.utils.blocks import (
     get_text_block,
 )
 from workspace.utils.people import team_members
-from workspace.utils.rota import RollingRotaReporter
+from workspace.utils.rota import RollingRotaReporter, WeeklyCadence
 
 
 # Optional custom notes for the report, specific to individual teams.
@@ -22,6 +23,18 @@ TEAM_NOTES = {
         "dependency and security updates\n"
         "  • check each repo for vulnerabilities and address"
     ),
+}
+
+# Optional non-default cadence, specific to individual teams.
+TEAM_CADENCE = {
+    "Team RAP": WeeklyCadence(weekday=2),  # Wednesday
+}
+
+# Slack command to advance each team's rota, shown in the report footnote
+# when the person on duty isn't available. Mirrors the commands wired up in
+# job_configs.py.
+TEAM_ADVANCE_COMMAND = {
+    "Team RAP": "rotas rap-dependencies advance",
 }
 
 
@@ -49,6 +62,13 @@ class UpdateDependenciesReporter(RollingRotaReporter):
             f"({self.format_interval(interval_start)}): {checker}"
         )
 
+    def format_interval(self, interval_start) -> str:
+        """Derive the full span of this interval from the cadence."""
+        interval_end = self.cadence.next_interval_start(interval_start) - timedelta(
+            days=1
+        )
+        return f"{interval_start.strftime('%d %b')}-{interval_end.strftime('%d %b')}"
+
     def report(self, *extra_texts):
         rota = self.get_rota()
         this_interval, next_interval = sorted(rota)
@@ -69,6 +89,10 @@ class UpdateDependenciesReporter(RollingRotaReporter):
 
         if self.notes:
             blocks.append(get_text_block(self.notes))
+
+        footnote_block = self._advance_footnote_block()
+        if footnote_block:
+            blocks.append(footnote_block)
 
         return json.dumps(blocks, indent=2)
 
@@ -103,6 +127,8 @@ def _build_reporter(
         title=f"{team_name} update-dependencies rota",
         candidates=team_members(team_name),
         state_key=f"{_slugify_team_name(team_name)}-update-dependencies",
+        cadence=TEAM_CADENCE.get(team_name, WeeklyCadence()),
+        advance_command=TEAM_ADVANCE_COMMAND.get(team_name),
         team_name=team_name,
         repos=repos,
         notes=TEAM_NOTES.get(team_name),
