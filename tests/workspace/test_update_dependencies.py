@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from bennettbot.job_configs import raw_config
 from workspace.rotas import update_dependencies as jobs
 from workspace.utils.people import Person
 

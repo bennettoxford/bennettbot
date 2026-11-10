@@ -724,44 +724,13 @@ def test_no_listener_found(mock_app):
 
 
 def test_unhandled_block_action(mock_app):
-    # Interactive payloads have a different shape to events, with no
-    # "event" key at all. The error handler must not crash trying to look
-    # for a message in a payload shape that doesn't have one.
-    body = {
-        "type": "block_actions",
-        "team": {"id": "T111", "domain": "test"},
-        "user": {"id": "W111", "username": "test", "team_id": "T111"},
-        "api_app_id": "A111",
-        "token": "verification_token",
-        "container": {"type": "message", "message_ts": "1596183880.004200"},
-        "trigger_id": "111.222.333",
-        "channel": {"id": "C0002", "name": "test-channel"},
-        "message": {"type": "message", "ts": "1596183880.004200"},
-        "actions": [
-            {
-                "action_id": "rap_update_deps_repo_0",
-                "block_id": "block1",
-                "type": "checkboxes",
-                "selected_options": [],
-                "action_ts": "1596183880.004200",
-            }
-        ],
-    }
-    timestamp, body_text = str(int(time.time())), json.dumps(body)
-    signature = SignatureVerifier("secret").generate_signature(
-        body=body_text,
-        timestamp=timestamp,
+    # Interactive payloads should be ignored if there is no matching listener.
+    resp = handle_block_action(
+        mock_app,
+        action_id="unregistered_action_id",
+        value="",
+        expected_status=200,
     )
-    headers = {
-        "content-type": ["application/json"],
-        "x-slack-signature": [signature],
-        "x-slack-request-timestamp": [timestamp],
-    }
-    request = BoltRequest(body=body_text, headers=headers)
-
-    resp = mock_app.dispatch(request)
-
-    assert resp.status == 200
     assert resp.body == "Unhandled message"
 
 
