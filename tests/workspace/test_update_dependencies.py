@@ -142,6 +142,11 @@ def test_report_rota_advance_footnote(
         assert not actions_blocks
     else:
         assert actions_blocks[-1]["elements"][0]["value"] == expected_advance_command
+        assert expected_advance_command in {
+            slack_command["command"]
+            for namespace in raw_config.values()
+            for slack_command in namespace["slack"]
+        }
 
 
 def test_duty_text_shows_the_full_week_according_to_cadence(
