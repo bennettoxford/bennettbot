@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-10-23; this represents the state of production config at this time.
+# Updated: 2026-11-11; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 # Note that App installation ids will need to be populated.
@@ -79,6 +79,7 @@ workflows:
   # Repos in this list are skipped entirely by the workflows jobs.
   excluded_repos:
     - django_coverage_plugin
+    - bennettoxford/openprescribing-v2
 
   # Workflow IDs that should not be reported for the given repo.
   ignored_workflows:
@@ -123,4 +124,5 @@ workflows:
 
 security:
   # Repos in this list are skipped entirely by the security jobs.
-  excluded_repos: []
+  excluded_repos:
+    - bennettoxford/openprescribing-v2
