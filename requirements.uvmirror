@@ -18,7 +18,7 @@ click==8.5.0
     # via flask
 colorama==0.4.6 ; sys_platform == 'win32'
     # via pytest
-coverage==7.16.2
+coverage==7.17.1
     # via pytest-cov
 cryptography==50.0.2
     # via
@@ -35,7 +35,7 @@ environs==15.2.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
-filelock==4.2.4
+filelock==4.2.7
     # via
     #   python-discovery
     #   virtualenv
@@ -43,24 +43,24 @@ flask==3.1.3
     # via bennettbot
 freezegun==1.5.5
     # via pytest-freezer
-google-api-core==2.42.0
+google-api-core==2.43.2
     # via google-api-python-client
 google-api-python-client==2.201.0
     # via bennettbot
-google-auth==2.62.0
+google-auth==2.62.1
     # via
     #   google-api-core
     #   google-api-python-client
     #   google-auth-httplib2
 google-auth-httplib2==0.4.4
     # via google-api-python-client
-googleapis-common-protos==1.75.5
+googleapis-common-protos==1.76.0
     # via google-api-core
 gunicorn==26.2.0
     # via bennettbot
 h11==0.16.0
     # via mocket
-httplib2==0.32.0
+httplib2==0.32.1
     # via
     #   google-api-python-client
     #   google-auth-httplib2
@@ -81,12 +81,12 @@ markupsafe==3.0.4
     #   flask
     #   jinja2
     #   werkzeug
-marshmallow==4.3.1
+marshmallow==4.4.0
     # via environs
 mocket==3.15.0
-nodeenv==1.11.0
+nodeenv==1.12.0
     # via pre-commit
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via google-api-core
 packaging==26.3
     # via
@@ -94,7 +94,7 @@ packaging==26.3
     #   virtualenv
 paramiko==5.1.0
     # via fab-classic
-platformdirs==4.13.5
+platformdirs==4.14.3
     # via virtualenv
 pluggy==1.7.0
     # via
@@ -110,11 +110,11 @@ protobuf==7.36.2
     #   proto-plus
 puremagic==2.2.0
     # via mocket
-pyasn1==0.6.4
+pyasn1==0.6.5
     # via pyasn1-modules
 pyasn1-modules==0.4.2
     # via google-auth
-pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
+pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
     # via cffi
 pygments==2.21.0
     # via pytest
@@ -134,9 +134,9 @@ pytest==9.1.1
 pytest-cov==7.1.0
 pytest-env==1.8.1
 pytest-freezer==0.4.9
-python-dateutil==2.9.0.post0
+python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.6.4
+python-discovery==1.9.2
     # via virtualenv
 python-dotenv==1.2.4
     # via
@@ -151,11 +151,9 @@ requests==2.34.2
     #   bennettbot
     #   google-api-core
 ruff==0.15.22
-six==1.17.0
-    # via python-dateutil
 slack-bolt==1.30.0
     # via bennettbot
-slack-sdk==3.45.0
+slack-sdk==3.46.0
     # via slack-bolt
 structlog==26.1.0
     # via bennettbot
@@ -163,13 +161,15 @@ typing-extensions==4.16.0
     # via
     #   mocket
     #   opentelemetry-api
+tzdata==2026.6
+    # via python-dateutil
 uritemplate==4.2.0
     # via google-api-python-client
 urllib3==2.8.0
     # via
     #   mocket
     #   requests
-virtualenv==21.14.13
+virtualenv==21.15.4
     # via pre-commit
 werkzeug==3.1.9
     # via flask
