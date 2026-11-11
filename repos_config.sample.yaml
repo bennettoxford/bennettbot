@@ -78,7 +78,7 @@ repos:
 workflows:
   # Repos in this list are skipped entirely by the workflows jobs.
   excluded_repos:
-    - django_coverage_plugin
+    - opensafely-core/django_coverage_plugin
     - bennettoxford/openprescribing-v2
 
   # Workflow IDs that should not be reported for the given repo.
