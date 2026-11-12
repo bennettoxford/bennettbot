@@ -21,24 +21,58 @@ def get_header_block(header_text, text_type="plain_text"):
 RUN_COMMAND_BUTTON_ACTION_ID = "run_bot_command"
 
 
-def get_run_command_button_block(button_text: str, command: str, style=None):
-    """An "actions" block whose button runs `command` - a full bot command,
-    e.g. "rotas rap-dependencies advance" - as if the user had typed it.
+def get_run_command_button_element(
+    button_text: str,
+    command: str,
+    style=None,
+    action_id=RUN_COMMAND_BUTTON_ACTION_ID,
+    id_suffix=None,
+):
+    """
+    A single button element, which runs a slack command, for embedding within an
+    actions block.
 
     `style` can be "primary" (green) or "danger" (red) to make the button
     stand out; omit it for Slack's default (neutral) styling.
+
+    Elements within the same block must have unique action_ids; pass a
+    (lowercase alphanumeric) suffix to differentiate this button if using more
+    than one in a block.
     """
+    if id_suffix is not None:
+        action_id = f"{action_id}_{id_suffix}"
     button = {
         "type": "button",
         "text": {"type": "plain_text", "text": button_text},
-        "action_id": RUN_COMMAND_BUTTON_ACTION_ID,
+        "action_id": action_id,
         "value": command,
     }
     if style:
         button["style"] = style
+    return button
+
+
+def get_run_command_button_block(
+    button_text: str,
+    command: str,
+    style=None,
+    action_id=RUN_COMMAND_BUTTON_ACTION_ID,
+    id_suffix=None,
+):
+    """An "actions" block with one button element, which runs
+    `command` - a full bot command as if the user had typed it.
+    """
+    button = get_run_command_button_element(
+        button_text, command, style, action_id, id_suffix
+    )
+    return get_actions_block([button])
+
+
+def get_actions_block(elements: list[dict]) -> dict:
+    """Return a Slack actions block containing the given action elements."""
     return {
         "type": "actions",
-        "elements": [button],
+        "elements": elements,
     }
 
 
