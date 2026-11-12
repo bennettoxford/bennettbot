@@ -734,19 +734,39 @@ def test_unhandled_block_action(mock_app):
     assert resp.body == "Unhandled message"
 
 
-def test_run_command_button_runs_the_command_like_a_typed_message(mock_app):
+@pytest.mark.parametrize(
+    "action_id,action_id_match",
+    [
+        # recognises RUN_COMMAND_BUTTON_ACTION_ID alone, or with _ followed by
+        # a lowercase alphanumeric suffix
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID, True),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_a", True),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_1", True),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_abc", True),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_1ab", True),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_", False),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "1", False),
+        (bot.RUN_COMMAND_BUTTON_ACTION_ID + "_A", False),
+    ],
+)
+def test_run_command_button_runs_the_command_like_a_typed_message(
+    mock_app, action_id, action_id_match
+):
     assert not scheduler.get_jobs()
 
     handle_block_action(
         mock_app,
-        action_id=bot.RUN_COMMAND_BUTTON_ACTION_ID,
+        action_id=action_id,
         value="test do good job",
     )
 
     jj = scheduler.get_jobs_of_type("test_good_job")
-    assert len(jj) == 1
-    assert_job_matches(jj[0], "test_good_job", {}, "C0002", T(60), None)
-    assert_slack_client_reacts_to_message(1)
+    if action_id_match:
+        assert len(jj) == 1
+        assert_job_matches(jj[0], "test_good_job", {}, "C0002", T(60), None)
+        assert_slack_client_reacts_to_message(1)
+    else:
+        assert len(jj) == 0
 
 
 def test_run_command_button_with_unmatched_value_does_not_crash(mock_app):

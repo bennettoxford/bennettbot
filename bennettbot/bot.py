@@ -159,7 +159,9 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
         ack()
         _listener(event, say, is_im=True)
 
-    @app.action(RUN_COMMAND_BUTTON_ACTION_ID)
+    @app.action(
+        re.compile(rf"^{re.escape(RUN_COMMAND_BUTTON_ACTION_ID)}(?:_[a-z0-9]+)?$")
+    )
     def run_command_button_listener(ack, body, action, say):
         """Run the bot command carried by a clicked button's `value`,
         as if a user had typed it themselves."""

@@ -12,6 +12,12 @@ from pathlib import Path
 
 import requests
 
+from workspace.utils.blocks import (
+    get_actions_block,
+    get_run_command_button_element,
+    get_text_block,
+)
+
 from . import job_configs, scheduler, settings
 from .config import get_support_config
 from .logger import logger
@@ -139,9 +145,10 @@ class JobDispatcher:
             self.job_config["call_tech_support_on_error"] and not self.job["is_im"]
         )
         if not error:
+            report_format = self.job_config["report_format"]
             if self.job_config["report_stdout"]:
                 content = self.stdout_path.read_text()
-                if self.job_config["report_format"] == "blocks":
+                if report_format == "blocks":
                     # a suppress_empty job legitimately produces no stdout
                     # when there's nothing to report, so only load json if there's
                     # content to load.
@@ -160,22 +167,51 @@ class JobDispatcher:
             else:
                 return
         else:
-            msg = (
-                f"Command `{self.job['type']}` failed.\n"
-                f"Find logs in {self.host_log_dir} on dokku3.\n"
-                f"Or check logs here with `showlogs head/tail/all`, e.g.\n"
-                f"* `@{settings.SLACK_APP_USERNAME} showlogs tail error {self.host_log_dir}`\n"
-                f"* `@{settings.SLACK_APP_USERNAME} showlogs all output {self.host_log_dir}`\n"
-            )
+            report_format = "blocks"
+            msg = [
+                get_text_block(
+                    f"Command `{self.job['type']}` failed.\n"
+                    f"View logs (find raw logs in {self.host_log_dir} on dokku3):"
+                ),
+                get_actions_block(
+                    [
+                        get_run_command_button_element(
+                            label,
+                            command,
+                            id_suffix=i,
+                        )
+                        for i, (label, command) in enumerate(
+                            [
+                                (
+                                    "Tail errors",
+                                    f"showlogs tail error {self.host_log_dir}",
+                                ),
+                                (
+                                    "All errors",
+                                    f"showlogs all error {self.host_log_dir}",
+                                ),
+                                (
+                                    "Tail output",
+                                    f"showlogs tail output {self.host_log_dir}",
+                                ),
+                                (
+                                    "All output",
+                                    f"showlogs all output {self.host_log_dir}",
+                                ),
+                            ]
+                        )
+                    ]
+                ),
+            ]
             if repost_to_tech_support_on_error:
-                msg += "\nCalling tech-support."
+                msg.append(get_text_block("Calling tech-support."))
 
         slack_message = notify_slack(
             self.slack_client,
             self.job["channel"],
             msg,
             thread_ts=self.job["thread_ts"],
-            message_format=self.job_config["report_format"] if not error else "text",
+            message_format=report_format,
         )
         if error and repost_to_tech_support_on_error:
             # Repost failed commands to tech-support if needed
