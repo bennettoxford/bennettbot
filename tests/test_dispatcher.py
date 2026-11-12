@@ -218,6 +218,7 @@ def test_job_failure():
             },
         ],
     )
+    assert_showlogs_failure_buttons(log_dir)
 
     with open(os.path.join(log_dir, "stdout")) as f:
         assert f.read() == ""
@@ -236,8 +237,10 @@ def test_job_failure_but_configured_not_to_call_tech_support():
         messages_kwargs=[
             {"channel": "logs", "text": "about to start"},
             {"channel": "channel", "text": "failed"},
-        ]
+        ],
+        message_format="blocks",
     )
+    assert_showlogs_failure_buttons(log_dir)
 
     with open(os.path.join(log_dir, "stdout")) as f:
         assert f.read() == ""
@@ -258,7 +261,9 @@ def test_job_failure_in_dm():
             {"channel": "logs", "text": "about to start"},
             {"channel": "IM0001", "text": "failed"},
         ],
+        message_format="blocks",
     )
+    assert_showlogs_failure_buttons(log_dir, channel="IM0001")
 
     with open(os.path.join(log_dir, "stdout")) as f:
         assert f.read() == ""
@@ -277,7 +282,7 @@ def test_job_failure_when_command_not_found():
     assert_slack_client_sends_messages(
         messages_kwargs=[
             {"channel": "logs", "text": "about to start"},
-            {"channel": "channel", "text": f"failed.\nFind logs in {log_dir}"},
+            {"channel": "channel", "text": "failed"},
             # failed message url reposted to tech support channel
             {
                 "channel": settings.SLACK_TECH_SUPPORT_CHANNEL,
@@ -285,6 +290,7 @@ def test_job_failure_when_command_not_found():
             },
         ],
     )
+    assert_showlogs_failure_buttons(log_dir)
 
     with open(os.path.join(log_dir, "stdout")) as f:
         assert f.read() == ""
@@ -304,7 +310,7 @@ def test_job_failure_with_host_log_dirs_setting():
     assert_slack_client_sends_messages(
         messages_kwargs=[
             {"channel": "logs", "text": "about to start"},
-            {"channel": "channel", "text": "failed.\nFind logs in /host/logs/"},
+            {"channel": "channel", "text": "failed"},
             # failed message url reposted to tech support channel
             {
                 "channel": settings.SLACK_TECH_SUPPORT_CHANNEL,
@@ -312,6 +318,7 @@ def test_job_failure_with_host_log_dirs_setting():
             },
         ],
     )
+    assert_showlogs_failure_buttons(log_dir)
 
     with open(os.path.join(log_dir, "stderr")) as f:
         assert f.read() == "cat: no-poem: No such file or directory\n"
@@ -665,6 +672,39 @@ def build_log_dir(job_type_with_namespace):
     return os.path.join(
         settings.LOGS_DIR, job_type_with_namespace, T0.strftime("%Y%m%d-%H%M%S")
     )
+
+
+def assert_showlogs_failure_buttons(log_dir, channel="channel"):
+    host_log_dir = str(
+        Path(settings.HOST_LOGS_DIR) / Path(log_dir).relative_to(settings.LOGS_DIR)
+    )
+    failure_message = next(
+        request
+        for request in get_mock_received_requests()["/api/chat.postMessage"]
+        if request["channel"] == channel and "blocks" in request
+    )
+
+    assert "Command `" in failure_message["blocks"][0]["text"]["text"]
+    assert host_log_dir in failure_message["blocks"][0]["text"]["text"]
+    buttons = failure_message["blocks"][1]["elements"]
+    assert [button["text"]["text"] for button in buttons] == [
+        "Tail errors",
+        "All errors",
+        "Tail output",
+        "All output",
+    ]
+    assert [button["action_id"] for button in buttons] == [
+        "run_bot_command_0",
+        "run_bot_command_1",
+        "run_bot_command_2",
+        "run_bot_command_3",
+    ]
+    assert [button["value"] for button in buttons] == [
+        f"showlogs tail error {host_log_dir}",
+        f"showlogs all error {host_log_dir}",
+        f"showlogs tail output {host_log_dir}",
+        f"showlogs all output {host_log_dir}",
+    ]
 
 
 def test_message_checker_run(freezer):
