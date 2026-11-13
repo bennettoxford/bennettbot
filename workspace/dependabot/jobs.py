@@ -62,8 +62,10 @@ def report_rota() -> str:
     repo_links = [
         f"<https://github.com/{org}/{repo}/pulls|{repo}>" for org, repo in repos
     ]
-    combined_link = "https://github.com/pulls?q=is%3Apr+is%3Aopen+" + "+".join(
-        f"repo%3A{org}%2F{repo}" for org, repo in repos
+    combined_link = (
+        "https://github.com/pulls?q=is%3Apr+is%3Aopen+%28"
+        + "+OR+".join(f"repo%3A{org}%2F{repo}" for org, repo in repos)
+        + "%29"
     )
 
     repo_links_text = ", ".join(repo_links[:-1]) + " and " + repo_links[-1]
