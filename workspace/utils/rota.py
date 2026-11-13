@@ -88,6 +88,10 @@ class WeeklyCadence:
     """One candidate per calendar week, anchored to `weekday` (0=Monday,
     ..., 6=Sunday - same numbering as `date.weekday()`), which defaults to
     Monday.
+
+    Uses the ISO week number directly rather than NWeeklyCadence(weeks=1)'s
+    start_date-counting, since a single calendar week is already a stable,
+    globally meaningful index on its own and doesn't need an anchor date.
     """
 
     def __init__(self, weekday: int = 0):
@@ -101,6 +105,77 @@ class WeeklyCadence:
 
     def next_interval_start(self, interval_start: date) -> date:
         return interval_start + timedelta(weeks=1)
+
+
+class NWeeklyCadence:
+    """One candidate every N calendar weeks, anchored to `start_date`.
+
+    Interval boundaries fall every N weeks from `start_date`, on
+    whatever weekday `start_date` itself is.
+
+    A date before `start_date` (e.g. calling the rota to see who's coming
+    up before the rota's gone live, or before the first scheduled run)
+    still maps to the first interval, rather than counting backwards into
+    a notional earlier cycle.
+    """
+
+    def __init__(self, weeks: int, start_date: date):
+        self.weeks = weeks
+        self.start_date = start_date
+
+    def interval_index(self, interval_start: date) -> int:
+        return (interval_start - self.start_date).days // (7 * self.weeks)
+
+    def interval_start(self, d: date) -> date:
+        # Clamp to 0 so a date before start_date lands in the first
+        # interval instead of floor-dividing to a negative block number.
+        days_since_start = max((d - self.start_date).days, 0)
+        block = days_since_start // (7 * self.weeks)
+        return self.start_date + timedelta(weeks=self.weeks * block)
+
+    def next_interval_start(self, interval_start: date) -> date:
+        return interval_start + timedelta(weeks=self.weeks)
+
+
+class MonthlyCadence:
+    """One candidate per calendar month, anchored to `day_of_month`.
+
+    `day_of_month` is restricted to 1-28, to avoid having to handle short
+    months or leap years.
+    """
+
+    def __init__(self, day_of_month: int = 1):
+        if not 1 <= day_of_month <= 28:
+            raise ValueError("day_of_month must be between 1 and 28")
+        self.day_of_month = day_of_month
+
+    @staticmethod
+    def interval_index(interval_start: date) -> int:
+        return interval_start.year * 12 + interval_start.month
+
+    def interval_start(self, d: date) -> date:
+        # Before day_of_month, d belongs to the interval that started last
+        # month, not this one, so we need to shift the current month back 1.
+        if d.day < self.day_of_month:
+            d = self._shift_months(d, -1)
+        return date(d.year, d.month, self.day_of_month)
+
+    def next_interval_start(self, interval_start: date) -> date:
+        # Note that the date we're shifting from here is `interval_start` and
+        # is already day_of_month-anchored (not an arbitrary date or "today").
+        shifted = self._shift_months(interval_start, 1)
+        return date(shifted.year, shifted.month, self.day_of_month)
+
+    @staticmethod
+    def _shift_months(d: date, months: int) -> date:
+        # Flatten (year, month) from the supplied date into a single zero-based
+        # month count, so shifting by any number of months - including rolling over a
+        # year boundary - is just integer addition
+        month_index = d.year * 12 + (d.month - 1) + months
+        # divmod() splits the count back into (year, 0-based month);
+        # +1 undoes the zero-basing.
+        year, month = divmod(month_index, 12)
+        return date(year, month + 1, 1)
 
 
 class RollingRotaReporter(RotaReporter):

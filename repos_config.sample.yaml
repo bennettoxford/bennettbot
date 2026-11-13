@@ -72,8 +72,18 @@ repos:
     kissh: Team RAP
     openprescribing: OpenPrescribing dev
     openprescribing-v2: OpenPrescribing dev
+    opensafely-wp: Team REX
     sysadmin: Team RAP
     update-dependencies-action: Team RAP
+
+update_dependencies:
+  # Extra repos to include in a team's update-dependencies rota, on top of
+  # the ones they own in `repos` above. Duplicates between this and `repos`
+  # are fine; the rota report de-duplicates before displaying.
+  extra_repos_by_team:
+    Team REX:
+      - opensafely/documentation
+      - opensafely-core/repo-template
 
 workflows:
   # Repos in this list are skipped entirely by the workflows jobs.
