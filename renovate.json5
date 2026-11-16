@@ -148,6 +148,7 @@
     },
     {
       "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
       "addLabels": ["actions"],
       "minimumReleaseAge": "7 days",
       // Prevent permanently pending runs when there is a package that doesn't
