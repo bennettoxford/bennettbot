@@ -10,7 +10,7 @@ actionlint_version := "1.17.1@sha256:c0a63b3e5c974c2466ead39404b70e448176beaff8c
 shellcheck_version := "v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d"
 
 # renovate: datasource=docker depName=renovate/renovate versioning=docker
-renovate_version := "44.244.2@sha256:ba902e37c7c9663ca48f4bb6f85d04f1385dbfddad1faee70dc21c8b8917b7d8"
+renovate_version := "44.246.0@sha256:69858d20a867b51547fe0657a8b1840a0905f071b4adb762bb82900972bc47a1"
 
 # renovate: datasource=docker depName=ghcr.io/hadolint/hadolint versioning=docker
 hadolint_version := "v2.15.1-alpine@sha256:a1d49ae1a4e83c1dbad26b8c1ad7588c8bd1e04f4866b34ad3cac50335198552"
