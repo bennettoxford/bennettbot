@@ -232,9 +232,7 @@ def test_get_rota_and_advance_use_the_cadence_for_all_date_math(tmp_path, freeze
         (date(2024, 1, 8), date(2024, 1, 4)),
         (date(2024, 1, 31), date(2024, 1, 4)),
         (date(2024, 2, 1), date(2024, 2, 1)),  # the next block
-        # Before start_date (e.g. trying out the rota ahead of going live)
-        # still reports the first interval, rather than counting backwards
-        # into a notional earlier cycle.
+        # Should report the first interval if prior to start_date
         (date(2024, 1, 3), date(2024, 1, 4)),
         (date(2023, 12, 1), date(2024, 1, 4)),
     ],
