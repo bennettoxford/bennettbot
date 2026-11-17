@@ -1,7 +1,7 @@
 # Dummy test data for workspace.utils.people. These are not real people, so
 # this fixture is free to change without needing to track who's actually on
 # any team - tests that need specific values build their own Person
-# instances instead of relying on entries here (see test_dependabot_rota.py
+# instances instead of relying on entries here (see test_update_dependencies.py
 # and test_standup_rota.py).
 people:
   PERSON_ONE:

@@ -39,6 +39,10 @@ def notify_slack(
     msg_kwargs = {"text": message_string, "thread_ts": thread_ts, "channel": channel}
     if message_format == "blocks":
         msg_kwargs["blocks"] = message_text
+        # Block-based messages (reports, rotas etc.) often link to docs/repos as
+        # reference - the unfurled previews are noisy, so suppress them.
+        msg_kwargs["unfurl_links"] = False
+        msg_kwargs["unfurl_media"] = False
 
     # Truncate message text for log to the first 500 characters
     log_message_text = message_string[:500]

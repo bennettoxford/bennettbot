@@ -611,27 +611,22 @@ raw_config = {
             },
         ],
     },
-    "dependabot": {
-        "description": "The Team REX Dependabot rota",
-        "jobs": {
-            "rota_report": {
-                "run_args_template": "python jobs.py",
-                "report_stdout": True,
-                "report_format": "blocks",
-            },
-        },
-        "slack": [
-            {
-                "command": "rota report",
-                "help": "Report who's next on Dependabot PR checking duty",
-                "action": "schedule_job",
-                "job_type": "rota_report",
-            },
-        ],
-    },
     "rotas": {
         "description": "Rolling rotas for teams whose membership/cadence is config-driven",
         "jobs": {
+            "rex_update_dependencies_report": {
+                "run_args_template": "python update_dependencies.py --team 'Team REX' rota",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "rex_update_dependencies_advance": {
+                "run_args_template": "python update_dependencies.py --team 'Team REX' advance",
+                "report_stdout": True,
+            },
+            "rex_update_dependencies_now": {
+                "run_args_template": "python update_dependencies.py --team 'Team REX' now",
+                "report_stdout": True,
+            },
             "rap_update_dependencies_report": {
                 "run_args_template": "python update_dependencies.py --team 'Team RAP' rota",
                 "report_stdout": True,
@@ -645,8 +640,39 @@ raw_config = {
                 "run_args_template": "python update_dependencies.py --team 'Team RAP' now",
                 "report_stdout": True,
             },
+            "database_reports_report": {
+                "run_args_template": "python database_reports.py rota",
+                "report_stdout": True,
+                "report_format": "blocks",
+            },
+            "database_reports_advance": {
+                "run_args_template": "python database_reports.py advance",
+                "report_stdout": True,
+            },
+            "database_reports_now": {
+                "run_args_template": "python database_reports.py now",
+                "report_stdout": True,
+            },
         },
         "slack": [
+            {
+                "command": "rex-dependencies report",
+                "help": "Report who's next on Team REX's update-dependencies rota",
+                "action": "schedule_job",
+                "job_type": "rex_update_dependencies_report",
+            },
+            {
+                "command": "rex-dependencies advance",
+                "help": "Shift the Team REX update-dependencies rota forward by one, e.g. if this week's person is unavailable",
+                "action": "schedule_job",
+                "job_type": "rex_update_dependencies_advance",
+            },
+            {
+                "command": "rex-dependencies now",
+                "help": "Report who's on Team REX's update-dependencies duty right now",
+                "action": "schedule_job",
+                "job_type": "rex_update_dependencies_now",
+            },
             {
                 "command": "rap-dependencies report",
                 "help": "Report who's next on Team RAP's update-dependencies rota",
@@ -664,6 +690,24 @@ raw_config = {
                 "help": "Report who's on Team RAP's update-dependencies duty right now",
                 "action": "schedule_job",
                 "job_type": "rap_update_dependencies_now",
+            },
+            {
+                "command": "database-reports report",
+                "help": "Report who's currently on Team RAP's database-reports rota",
+                "action": "schedule_job",
+                "job_type": "database_reports_report",
+            },
+            {
+                "command": "database-reports advance",
+                "help": "Shift the Team RAP database-reports rota forward by one, e.g. if the person on duty is unavailable",
+                "action": "schedule_job",
+                "job_type": "database_reports_advance",
+            },
+            {
+                "command": "database-reports now",
+                "help": "Report who's on Team RAP's database-reports duty right now",
+                "action": "schedule_job",
+                "job_type": "database_reports_now",
             },
         ],
     },

@@ -31,6 +31,9 @@ repos:
   ebmdatalab:
     bennett.ox.ac.uk: Team REX
 
+update_dependencies:
+  extra_repos_by_team: {}
+
 workflows:
   excluded_repos: []
   ignored_workflows:

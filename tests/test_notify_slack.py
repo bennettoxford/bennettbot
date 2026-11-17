@@ -46,6 +46,8 @@ def test_notify_slack_success_blocks():
         "thread_ts": 234.56,
         "text": str(block_message),
         "blocks": block_message,
+        "unfurl_links": False,
+        "unfurl_media": False,
     }
 
 

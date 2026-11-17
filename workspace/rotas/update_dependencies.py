@@ -23,6 +23,16 @@ TEAM_NOTES = {
         "dependency and security updates\n"
         "  • check each repo for vulnerabilities and address"
     ),
+    "Team REX": (
+        "Merge any outstanding non-NPM Dependabot/update-dependencies-action "
+        "PRs.\n"
+        "Review Thomas' PRs for NPM updates.\n"
+        "Review the weekly Codespaces at risk report.\n"
+        "Review Sentry issues and archive or resolve where appropriate "
+        "(spend at most 30 mins per week).\n"
+        "Finally, check the workflow failures each day and ensure someone "
+        "is assigned to resolve them."
+    ),
 }
 
 # Optional non-default cadence, specific to individual teams.
@@ -35,6 +45,7 @@ TEAM_CADENCE = {
 # job_configs.py.
 TEAM_ADVANCE_COMMAND = {
     "Team RAP": "rotas rap-dependencies advance",
+    "Team REX": "rotas rex-dependencies advance",
 }
 
 
@@ -136,8 +147,11 @@ def _build_reporter(
 
 
 def report_rota(team_name: str) -> str:
-    repos = sorted(repos_config.get_repo_full_names_for_team(team_name))
-    return _build_reporter(team_name, repos).report()
+    repos = {
+        *repos_config.get_repo_full_names_for_team(team_name),
+        *repos_config.get_extra_repo_full_names_for_team(team_name),
+    }
+    return _build_reporter(team_name, sorted(repos)).report()
 
 
 def advance_rota(team_name: str) -> str:
