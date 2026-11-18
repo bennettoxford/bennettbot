@@ -2,7 +2,7 @@
 # AUTOMATICALLY APPLIED TO PRODUCTION
 #
 # Example repos config for bennettbot.
-# Updated: 2026-11-11; this represents the state of production config at this time.
+# Updated: 2026-11-18; this represents the state of production config at this time.
 # Copy this file to $WRITEABLE_DIR/repos_config.yaml and edit there;
 # production updates do not require a code change.
 # Note that App installation ids will need to be populated.
@@ -36,7 +36,6 @@ installation_ids:
 # Repos grouped by their owning org; values are {repo_name: team}.
 repos:
   opensafely-core:
-    actions-registry: Team REX
     airlock: Team RAP
     backend-server: Team RAP
     base-docker: Team RAP
@@ -47,7 +46,6 @@ repos:
     opensafely-cli: Team REX
     opencodelists: Team REX
     opensafely-vscode: Team RAP
-    osgithub: Team REX
     pipeline: Team RAP
     proxy: Team RAP
     python-docker: Team RAP
