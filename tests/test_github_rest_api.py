@@ -94,7 +94,7 @@ def test_post_graphql_sends_query_and_variables():
 )
 def test_post_graphql_rejects_mutation(query):
     client = github_rest_api.GitHubAPIClient("test-token")
-    with patch.object(github_rest_api.readonly_session, "post") as mock_post:
+    with patch.object(github_rest_api.readonly_session, "post") as mock_post:  # noqa: SIM117
         with pytest.raises(RuntimeError, match="read-only"):
             client.post_graphql(query)
     mock_post.assert_not_called()
@@ -384,7 +384,7 @@ def test_get_client_for_org_configured_but_empty_raises_error():
     # installed for it (a falsy value) - mock this rather than relying on a
     # fixture org in tests/repos_config.yaml, since we otherwise assume every
     # configured org is properly set up.
-    with patch.object(
+    with patch.object(  # noqa: SIM117
         github_rest_api.repos_config,
         "installation_ids",
         return_value={"some-org": None},
