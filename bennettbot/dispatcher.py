@@ -113,6 +113,7 @@ class JobDispatcher:
                     stderr=stderr,
                     env=env,
                     shell=True,
+                    check=False,
                 )
                 rc = rv.returncode
             except Exception:  # pragma: no cover

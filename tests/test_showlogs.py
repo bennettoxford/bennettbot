@@ -42,6 +42,7 @@ def test_logs(option, logtype, expected_comment, expected_output):
         env={**environ, "PYTHONPATH": logs_workspace.parent},
         shell=True,
         capture_output=True,
+        check=True,
     )
     assert expected_comment in rv.stdout
     assert expected_output in rv.stdout
@@ -57,6 +58,7 @@ def test_log_with_no_ouput():
         env={**environ, "PYTHONPATH": logs_workspace.parent},
         shell=True,
         capture_output=True,
+        check=True,
     )
     assert b"File has no content" in rv.stdout
 
@@ -84,6 +86,7 @@ def test_logs_with_different_host_logs_dir():
         },
         shell=True,
         capture_output=True,
+        check=True,
     )
     assert b"Reading head of log file" in rv.stdout
 
@@ -98,5 +101,6 @@ def test_log_file_not_found():
         env={**environ, "PYTHONPATH": logs_workspace.parent},
         shell=True,
         capture_output=True,
+        check=True,
     )
     assert b"not found" in rv.stdout
