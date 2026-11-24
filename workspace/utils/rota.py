@@ -197,13 +197,13 @@ class RollingRotaReporter(RotaReporter):
         title: str,
         candidates: list,
         state_key: str,
-        cadence=WeeklyCadence(),
+        cadence: WeeklyCadence | NWeeklyCadence | MonthlyCadence | None = None,
         advance_command: str | None = None,
     ):
         super().__init__(title)
         self.candidates = candidates
         self.state_key = state_key
-        self.cadence = cadence
+        self.cadence = cadence or WeeklyCadence()
         self.advance_command = advance_command
 
     def _advance_footnote_block(self) -> dict | None:
