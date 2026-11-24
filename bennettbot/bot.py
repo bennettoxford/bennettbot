@@ -218,7 +218,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
                     rf"(?P<text_match>.*)"  # capture everything else (including nothing) in a named group
                 ),
                 text,
-                flags=re.X,  # ignore whitespace in the regex
+                flags=re.VERBOSE,  # ignore whitespace in the regex
             )
             text = text_match.group("text_match")
 

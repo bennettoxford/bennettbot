@@ -17,7 +17,9 @@ def get_support_config(channels=None):
             ),
             # Match "tech-support" as a word (treating hyphens as word characters), except if
             # it's preceded by a slash to avoid matching it in URLs
-            "regex": re.compile(r".*(^|[^\w\-/])tech-support($|[^\w\-]).*", flags=re.I),
+            "regex": re.compile(
+                r".*(^|[^\w\-/])tech-support($|[^\w\-]).*", flags=re.IGNORECASE
+            ),
             "reaction": "sos",
         },
         "bennett-admins": {
@@ -35,7 +37,7 @@ def get_support_config(channels=None):
             # "bennet-admin" as a word (treating hyphens as word characters), except if
             # it's preceded by a slash to avoid matching it in URLs
             "regex": re.compile(
-                r".*(^|[^\w\-/])bennett?-admins?($|[^\w\-]).*", flags=re.I
+                r".*(^|[^\w\-/])bennett?-admins?($|[^\w\-]).*", flags=re.IGNORECASE
             ),
             "reaction": "flamingo",
         },
