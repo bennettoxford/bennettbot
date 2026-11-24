@@ -1,6 +1,6 @@
 import functools
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,7 +13,7 @@ from workspace.workflows import jobs
 
 
 # Use current year to avoid SystemTimeWarning when frozen time is too far in the past
-THIS_YEAR = datetime.now().year
+THIS_YEAR = datetime.now(tz=UTC).year
 
 WORKFLOWS_MAIN = {
     82728346: "CI",

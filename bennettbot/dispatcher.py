@@ -310,7 +310,7 @@ class MessageChecker:
             # check for messages from today and yesterday; sometimes it seems to
             # take a while for slack to return messages in search results, so
             # make sure that messages sent late in the day still get picked up
-            today = datetime.today()
+            today = datetime.now(tz=UTC).date()
             check_from = (today - timedelta(days=2)).strftime("%Y-%m-%d")
             for support_type in self.config:
                 self.check_messages(support_type, check_from)

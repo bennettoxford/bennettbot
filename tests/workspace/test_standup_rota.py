@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -132,16 +132,16 @@ def test_daily_rota_even_week(freezer):
 
 def test_get_weekday_date(freezer):
     freezer.move_to("2024-12-10")  # Tuesday
-    assert get_next_rota_date("monday") == datetime(2024, 12, 16).date()
-    assert get_next_rota_date("wednesday") == datetime(2024, 12, 11).date()
-    assert get_next_rota_date("friday") == datetime(2024, 12, 13).date()
+    assert get_next_rota_date("monday") == datetime(2024, 12, 16, tzinfo=UTC).date()
+    assert get_next_rota_date("wednesday") == datetime(2024, 12, 11, tzinfo=UTC).date()
+    assert get_next_rota_date("friday") == datetime(2024, 12, 13, tzinfo=UTC).date()
 
     freezer.move_to("2024-12-12")  # Thursday
-    assert get_next_rota_date("monday") == datetime(2024, 12, 16).date()
-    assert get_next_rota_date("wednesday") == datetime(2024, 12, 18).date()
-    assert get_next_rota_date("friday") == datetime(2024, 12, 13).date()
+    assert get_next_rota_date("monday") == datetime(2024, 12, 16, tzinfo=UTC).date()
+    assert get_next_rota_date("wednesday") == datetime(2024, 12, 18, tzinfo=UTC).date()
+    assert get_next_rota_date("friday") == datetime(2024, 12, 13, tzinfo=UTC).date()
 
     freezer.move_to("2024-12-15")  # Sunday
-    assert get_next_rota_date("monday") == datetime(2024, 12, 16).date()
-    assert get_next_rota_date("wednesday") == datetime(2024, 12, 18).date()
-    assert get_next_rota_date("friday") == datetime(2024, 12, 20).date()
+    assert get_next_rota_date("monday") == datetime(2024, 12, 16, tzinfo=UTC).date()
+    assert get_next_rota_date("wednesday") == datetime(2024, 12, 18, tzinfo=UTC).date()
+    assert get_next_rota_date("friday") == datetime(2024, 12, 20, tzinfo=UTC).date()

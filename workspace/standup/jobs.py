@@ -1,6 +1,6 @@
 import argparse
 import json
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from bennettbot import settings
 from workspace.utils import blocks
@@ -32,8 +32,8 @@ def get_pairs():
 
 def get_next_rota_date(day_of_week):
     weekday = WEEKDAY_INTS[day_of_week]
-    offset_days = (weekday - date.weekday(datetime.today())) % 7
-    rota_date = datetime.today() + timedelta(offset_days)
+    offset_days = (weekday - date.weekday(datetime.now(tz=UTC))) % 7
+    rota_date = datetime.now(tz=UTC) + timedelta(offset_days)
     return rota_date.date()
 
 
@@ -44,7 +44,7 @@ def is_even_week(rota_date):
 
 def weekly_rota(args):
     pairs = get_pairs()
-    today = date.today()
+    today = datetime.now(tz=UTC).date()
     primary = is_even_week(today)
     secondary = 0 if primary else 1
     header = "Team Rex stand ups this week"

@@ -1,6 +1,6 @@
 import argparse
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from workspace.utils.blocks import get_basic_header_and_text_blocks
 from workspace.utils.people import team_members
@@ -44,7 +44,7 @@ class DatabaseReportsReporter(RollingRotaReporter):
     def report(self, *extra_texts):
         # Just show who's on duty now.
         rota = self.get_rota()
-        this_interval = self.cadence.interval_start(date.today())
+        this_interval = self.cadence.interval_start(datetime.now(tz=UTC).date())
         duty_text = self.get_rota_text_for_interval(rota, this_interval, "this")
 
         blocks = get_basic_header_and_text_blocks(

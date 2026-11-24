@@ -1,6 +1,6 @@
 import abc
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from itertools import cycle, islice
 from pathlib import Path
 
@@ -19,7 +19,7 @@ class RotaReporter(abc.ABC):
     def report(self, *extra_texts):
         rota = self.get_rota()
 
-        today = date.today()
+        today = datetime.now(tz=UTC).date()
         this_monday = today - timedelta(days=today.weekday())
         next_monday = this_monday + timedelta(days=7)
 
@@ -239,7 +239,7 @@ class RollingRotaReporter(RotaReporter):
         """
         self._write_offset(self._read_offset() + 1)
 
-        this_interval = self.cadence.interval_start(date.today())
+        this_interval = self.cadence.interval_start(datetime.now(tz=UTC).date())
         checker = self.get_rota()[this_interval]
         duty = f"{duty_name} duty" if duty_name else "duty"
         return f"Rota advanced: {checker.formatted_slack_username} is now on {duty}."
@@ -249,13 +249,13 @@ class RollingRotaReporter(RotaReporter):
         Returns a short plain-text message naming who's on duty for the
         current interval, without rendering the full report.
         """
-        this_interval = self.cadence.interval_start(date.today())
+        this_interval = self.cadence.interval_start(datetime.now(tz=UTC).date())
         checker = self.get_rota()[this_interval]
         duty = f"{duty_name} duty" if duty_name else "duty"
         return f"{checker.human_readable} is on {duty}."
 
     def get_rota(self) -> dict:
-        this_interval = self.cadence.interval_start(date.today())
+        this_interval = self.cadence.interval_start(datetime.now(tz=UTC).date())
         next_interval = self.cadence.next_interval_start(this_interval)
 
         offset = self._read_offset()

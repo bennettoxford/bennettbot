@@ -1,6 +1,6 @@
 import argparse
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urljoin
 
 from bennettbot import settings
@@ -145,7 +145,7 @@ class RepoWorkflowReporter:
             == 1
         )
         # Use the moment just before calling the GitHub API as the timestamp
-        timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         new_runs = self.get_runs(since_last_retrieval)
         latest_runs, missing_ids = self.find_latest_for_each_workflow(new_runs)
         conclusions = {

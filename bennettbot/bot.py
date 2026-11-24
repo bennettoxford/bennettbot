@@ -92,7 +92,7 @@ def join_all_channels(client, channels, user_id):
 
 def tech_support_out_of_office():
     start, end = get_tech_support_dates()
-    today = datetime.today().date()
+    today = datetime.now(tz=UTC).date()
     if start and end and (start <= today <= end):
         return end
 
