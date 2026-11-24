@@ -123,32 +123,27 @@ def _update_job(conn, id_, args, channel, thread_ts, message_ts, start_after):
 def cancel_job(type_):
     """Cancel scheduled job of given type."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            conn.execute(
-                "DELETE FROM job WHERE type = ? AND started_at IS NULL", [type_]
-            )
+    with closing(get_connection()) as conn, conn:
+        conn.execute("DELETE FROM job WHERE type = ? AND started_at IS NULL", [type_])
 
 
 @log_call
 def schedule_suppression(job_type, start_at, end_at):
     """Schedule suppression for jobs of given type."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            conn.execute(
-                "INSERT INTO suppression (job_type, start_at, end_at) VALUES (?, ?, ?)",
-                [job_type, start_at, end_at],
-            )
+    with closing(get_connection()) as conn, conn:
+        conn.execute(
+            "INSERT INTO suppression (job_type, start_at, end_at) VALUES (?, ?, ?)",
+            [job_type, start_at, end_at],
+        )
 
 
 @log_call
 def cancel_suppressions(job_type):
     """Cancel suppressions for jobs of given type."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            conn.execute("DELETE FROM suppression WHERE job_type = ?", [job_type])
+    with closing(get_connection()) as conn, conn:
+        conn.execute("DELETE FROM suppression WHERE job_type = ?", [job_type])
 
 
 # @log_call
@@ -158,9 +153,8 @@ def remove_expired_suppressions():
     This is not logged because it is called every second by the dispatcher.
     """
 
-    with closing(get_connection()) as conn:
-        with conn:
-            conn.execute("DELETE FROM suppression WHERE end_at < ?", [_now()])
+    with closing(get_connection()) as conn, conn:
+        conn.execute("DELETE FROM suppression WHERE end_at < ?", [_now()])
 
 
 # @log_call
@@ -219,18 +213,16 @@ def reserve_job():
 def mark_job_done(job_id):
     """Remove job from job table."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            conn.execute("DELETE FROM job WHERE id = ?", [job_id])
+    with closing(get_connection()) as conn, conn:
+        conn.execute("DELETE FROM job WHERE id = ?", [job_id])
 
 
 @log_call
 def get_job(job_id):
     """Retrieve job from job table."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            job = list(conn.execute("SELECT * FROM job WHERE id = ?", [job_id]))[0]
+    with closing(get_connection()) as conn, conn:
+        job = list(conn.execute("SELECT * FROM job WHERE id = ?", [job_id]))[0]
     _convert_job_args_from_json(job)
     return job
 
@@ -239,9 +231,8 @@ def get_job(job_id):
 def get_jobs():
     """Retrieve all jobs from job table."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            jobs = list(conn.execute("SELECT * FROM job ORDER BY id"))
+    with closing(get_connection()) as conn, conn:
+        jobs = list(conn.execute("SELECT * FROM job ORDER BY id"))
     for job in jobs:
         _convert_job_args_from_json(job)
     return jobs
@@ -251,11 +242,10 @@ def get_jobs():
 def get_jobs_of_type(type_):
     """Retrieve all jobs of given type from job table."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            jobs = list(
-                conn.execute("SELECT * FROM job WHERE type = ? ORDER BY id", [type_])
-            )
+    with closing(get_connection()) as conn, conn:
+        jobs = list(
+            conn.execute("SELECT * FROM job WHERE type = ? ORDER BY id", [type_])
+        )
     for job in jobs:
         _convert_job_args_from_json(job)
     return jobs
@@ -265,10 +255,9 @@ def get_jobs_of_type(type_):
 def get_suppressions():
     """Retrieve all suppressions from job table."""
 
-    with closing(get_connection()) as conn:
-        with conn:
-            suppressions = list(conn.execute("SELECT * FROM suppression ORDER BY id"))
-        return suppressions
+    with closing(get_connection()) as conn, conn:
+        suppressions = list(conn.execute("SELECT * FROM suppression ORDER BY id"))
+    return suppressions
 
 
 def _now():
