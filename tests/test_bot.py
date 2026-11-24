@@ -196,7 +196,7 @@ def test_schedule_suppression(mock_app, message_text):
         # bad end at
         "<@U1234> test suppress job from 11:20 to 11:60",
         "<@U1234> test suppress job from 11:20 to 24:30",
-        "<@U1234> test suppress job from 11:20 to xx:30"
+        "<@U1234> test suppress job from 11:20 to xx:30",
         # start at after end at
         "<@U1234> test suppress job from 11:30 to 11:20",
         # start at equal to end at

@@ -51,8 +51,10 @@ def test_out_of_office_off(config_path, config, message):
         ),
         (
             {"start": "3033-01-01", "end": "3033-01-01"},  # OOO scheduled
-            "Tech support out of office is currently OFF.\n"
-            "Scheduled out of office is from 3033-01-01 until 3033-01-01.",
+            (
+                "Tech support out of office is currently OFF.\n"
+                "Scheduled out of office is from 3033-01-01 until 3033-01-01."
+            ),
         ),
     ],
 )

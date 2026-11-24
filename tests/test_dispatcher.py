@@ -801,9 +801,11 @@ def test_message_checker_matched_messages(support_type, support_channel, reactio
     assert requests_by_path["/api/search.messages"] == [
         {
             "query": [
-                f'"{keyword}" -has::{reaction}: -in:#{support_channel} '
-                f"-from:@{settings.SLACK_APP_USERNAME} -is:dm "
-                "after:2024-03-02"
+                (
+                    f'"{keyword}" -has::{reaction}: -in:#{support_channel} '
+                    f"-from:@{settings.SLACK_APP_USERNAME} -is:dm "
+                    "after:2024-03-02"
+                )
             ]
         }
         for keyword in keywords
