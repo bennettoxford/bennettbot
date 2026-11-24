@@ -544,7 +544,7 @@ def test_some_workflows_not_found(mock_airlock_reporter, cache_path):
     assert len(mock_airlock_reporter.workflow_ids) == 7
     conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
     assert conclusion_statuses == {
-        **{key: "success" for key in WORKFLOWS_MAIN.keys()},
+        **{key: "success" for key in WORKFLOWS_MAIN},
         1234: "running",
         5678: "missing",
     }
@@ -568,7 +568,7 @@ def test_get_runs_beyond_last_retrieval_if_not_all_successful(
     assert len(mock_airlock_reporter.workflow_ids) == 6
     conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
     assert conclusion_statuses == {
-        **{key: "success" for key in WORKFLOWS_MAIN.keys()},
+        **{key: "success" for key in WORKFLOWS_MAIN},
         1234: conclusion,
     }
 

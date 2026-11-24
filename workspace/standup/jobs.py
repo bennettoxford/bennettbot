@@ -53,7 +53,7 @@ def weekly_rota(args):
             f"{day_of_week.title()}: "
             f"{pairs[day_of_week][primary].human_readable} "
             f"(backup: {pairs[day_of_week][secondary].human_readable})"
-            for day_of_week in pairs.keys()
+            for day_of_week in pairs
         ]
     )
     return json.dumps(blocks.get_basic_header_and_text_blocks(header, days))
