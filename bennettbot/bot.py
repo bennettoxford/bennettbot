@@ -401,7 +401,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             notify_slack(
                 app.client,
                 channel,
-                f"Unexpected error: {repr(error)}\nwhile responding to message `{message_text}`",
+                f"Unexpected error: {error!r}\nwhile responding to message `{message_text}`",
                 thread_ts=ts,
             )
             return BoltResponse(status=500, body="Something went wrong")
