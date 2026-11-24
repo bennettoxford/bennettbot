@@ -184,7 +184,6 @@ class RepoWorkflowReporter:
             conclusions[workflow_id] = previous_conclusions.get(
                 id_str, missing_name_and_url
             )
-        return
 
     def write_cache_to_file(self):
         cache_file_contents = load_cache()
