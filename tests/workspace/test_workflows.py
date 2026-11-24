@@ -168,7 +168,7 @@ def use_mock_results(patch_settings, workflows_overrides=None):
         @functools.wraps(func)
         def wrapper_use_mock_results(*args, **kwargs):
             # Mock cache
-            keys = sorted(list(WORKFLOWS_MAIN.keys()))
+            keys = sorted(WORKFLOWS_MAIN.keys())
             mock_cache = {
                 f"{r['org']}/{r['repo']}": {
                     "version": "1",
@@ -687,7 +687,7 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji, mock_org_
         body=Path("tests/workspace/workflows.json").read_text(),
     )
     mock_conclusions.return_value = {
-        key: conclusion for key in sorted(list(WORKFLOWS_MAIN.keys()))
+        key: conclusion for key in sorted(WORKFLOWS_MAIN.keys())
     }
     status = f"{emoji} {reported}"
     args = jobs.get_command_line_parser().parse_args(
