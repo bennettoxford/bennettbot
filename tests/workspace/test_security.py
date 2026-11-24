@@ -1,6 +1,7 @@
 import functools
 import json
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -50,7 +51,7 @@ def mock_alerts_endpoint():
 class MockRepoAlertsReporter(jobs.RepoAlertsReporter):
     """Skip the HTTP call in __init__ and let tests inject alerts via class attr."""
 
-    counts_by_repo_full_name: dict = {}
+    counts_by_repo_full_name: ClassVar[dict[str, int]] = {}
 
     def __init__(self, repo_full_name, severities=None):
         self.repo_full_name = repo_full_name
