@@ -189,7 +189,7 @@ def test_job_success_with_slack_exception():
 
     client = slack_web_client()
     # confirm that posting a message with the client raises an error
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         client.chat_postMessage(text="test", channel="channel")
 
     do_job(client, job)
