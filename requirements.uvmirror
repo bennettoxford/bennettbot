@@ -18,7 +18,7 @@ click==8.5.1
     # via flask
 colorama==0.4.6 ; sys_platform == 'win32'
     # via pytest
-coverage==7.17.2
+coverage==7.17.3
     # via pytest-cov
 cryptography==50.0.2
     # via
@@ -35,7 +35,7 @@ environs==15.2.0
     # via bennettbot
 fab-classic==1.21.0
     # via bennettbot
-filelock==4.2.10
+filelock==4.2.12
     # via
     #   python-discovery
     #   virtualenv
@@ -94,7 +94,7 @@ packaging==26.3
     #   virtualenv
 paramiko==5.1.0
     # via fab-classic
-platformdirs==4.14.5
+platformdirs==4.14.7
     # via virtualenv
 pluggy==1.7.0
     # via
@@ -108,7 +108,7 @@ protobuf==7.36.2
     #   google-api-core
     #   googleapis-common-protos
     #   proto-plus
-puremagic==2.2.0
+puremagic==2.3.0
     # via mocket
 pyasn1==0.6.5
     # via pyasn1-modules
@@ -136,7 +136,7 @@ pytest-env==1.8.5
 pytest-freezer==0.4.9
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.5
+python-discovery==1.9.6
     # via virtualenv
 python-dotenv==1.2.4
     # via
@@ -153,7 +153,7 @@ requests==2.34.2
 ruff==0.15.22
 slack-bolt==1.30.0
     # via bennettbot
-slack-sdk==3.46.0
+slack-sdk==3.47.0
     # via slack-bolt
 structlog==26.1.0
     # via bennettbot
@@ -169,7 +169,7 @@ urllib3==2.8.0
     # via
     #   mocket
     #   requests
-virtualenv==21.15.6
+virtualenv==21.15.8
     # via pre-commit
 werkzeug==3.1.9
     # via flask
