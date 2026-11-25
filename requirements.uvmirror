@@ -56,7 +56,7 @@ google-auth-httplib2==0.4.4
     # via google-api-python-client
 googleapis-common-protos==1.76.0
     # via google-api-core
-gunicorn==27.0.0
+gunicorn==27.0.1
     # via bennettbot
 h11==0.16.0
     # via mocket
