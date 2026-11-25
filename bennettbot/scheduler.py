@@ -222,7 +222,7 @@ def get_job(job_id):
     """Retrieve job from job table."""
 
     with closing(get_connection()) as conn, conn:
-        job = list(conn.execute("SELECT * FROM job WHERE id = ?", [job_id]))[0]
+        job = next(iter(conn.execute("SELECT * FROM job WHERE id = ?", [job_id])))
     _convert_job_args_from_json(job)
     return job
 
