@@ -118,7 +118,7 @@ required-version = ">=0.13"
 
 [dependency-groups]
 dev = [
-  "ruff<=0.15.22",
+  "ruff<=0.17.6",
   "pre-commit<=4.7.0",
   "pytest<=9.2.0",
   "pytest-cov<=7.1.0",
