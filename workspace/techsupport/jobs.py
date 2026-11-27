@@ -1,6 +1,6 @@
 import json
 from argparse import ArgumentParser
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from os import environ
 from pathlib import Path
 
@@ -12,7 +12,7 @@ def config_file():
 
 
 def today():
-    return datetime.today().date()
+    return datetime.now(tz=UTC).date()
 
 
 def convert_date(date_string):

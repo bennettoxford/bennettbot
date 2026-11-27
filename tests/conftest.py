@@ -49,9 +49,6 @@ def reset_github_client_cache():
 
 
 @pytest.fixture(autouse=True)
-def github_app_settings():
-    environ = os.environ.copy()
-    os.environ["GITHUB_APP_CLIENT_ID"] = "client-id"
-    os.environ["GITHUB_APP_PRIVATE_KEY"] = "private-key"
-    yield
-    os.environ = environ
+def github_app_settings(monkeypatch):
+    monkeypatch.setenv("GITHUB_APP_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "private-key")

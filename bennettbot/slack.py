@@ -93,9 +93,9 @@ def notify_slack(
             header_text, message_text, error=error
         )
         slack_client.chat_postMessage(**msg_kwargs)
-    except Exception:
+    except Exception as e:
         # Not even the error message could not be posted to Slack, so
-        pass
+        logger.exception(e)
     finally:
         # Log the error
         logger.error(

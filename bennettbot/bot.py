@@ -92,7 +92,7 @@ def join_all_channels(client, channels, user_id):
 
 def tech_support_out_of_office():
     start, end = get_tech_support_dates()
-    today = datetime.today().date()
+    today = datetime.now(tz=UTC).date()
     if start and end and (start <= today <= end):
         return end
 
@@ -218,7 +218,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
                     rf"(?P<text_match>.*)"  # capture everything else (including nothing) in a named group
                 ),
                 text,
-                flags=re.X,  # ignore whitespace in the regex
+                flags=re.VERBOSE,  # ignore whitespace in the regex
             )
             text = text_match.group("text_match")
 
@@ -401,7 +401,7 @@ def register_listeners(app, config, channels, bot_user_id, internal_user_ids):
             notify_slack(
                 app.client,
                 channel,
-                f"Unexpected error: {repr(error)}\nwhile responding to message `{message_text}`",
+                f"Unexpected error: {error!r}\nwhile responding to message `{message_text}`",
                 thread_ts=ts,
             )
             return BoltResponse(status=500, body="Something went wrong")

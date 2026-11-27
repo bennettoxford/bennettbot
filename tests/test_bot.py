@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -196,7 +196,7 @@ def test_schedule_suppression(mock_app, message_text):
         # bad end at
         "<@U1234> test suppress job from 11:20 to 11:60",
         "<@U1234> test suppress job from 11:20 to 24:30",
-        "<@U1234> test suppress job from 11:20 to xx:30"
+        "<@U1234> test suppress job from 11:20 to xx:30",
         # start at after end at
         "<@U1234> test suppress job from 11:30 to 11:20",
         # start at equal to end at
@@ -597,8 +597,8 @@ def test_tech_support_edited_message(mock_app):
 
 @patch("bennettbot.bot.get_tech_support_dates")
 def test_tech_support_out_of_office_listener(tech_support_dates, mock_app):
-    start = (datetime.today() - timedelta(1)).date()
-    end = (datetime.today() + timedelta(1)).date()
+    start = (datetime.now(tz=UTC) - timedelta(1)).date()
+    end = (datetime.now(tz=UTC) + timedelta(1)).date()
     tech_support_dates.return_value = start, end
 
     # If tech-support is OOO, the handler will first reply with the OOO message, then
@@ -650,8 +650,8 @@ def test_tech_support_out_of_office_dates(
     end_days_from_today,
     ooo_message,
 ):
-    start = (datetime.today() + timedelta(start_days_from_today)).date()
-    end = (datetime.today() + timedelta(end_days_from_today)).date()
+    start = (datetime.now(tz=UTC) + timedelta(start_days_from_today)).date()
+    end = (datetime.now(tz=UTC) + timedelta(end_days_from_today)).date()
     tech_support_dates.return_value = start, end
 
     # If tech-support is OOO, the handler will first reply with the OOO message, then

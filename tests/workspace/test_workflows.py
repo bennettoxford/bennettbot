@@ -1,6 +1,6 @@
 import functools
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,7 +13,7 @@ from workspace.workflows import jobs
 
 
 # Use current year to avoid SystemTimeWarning when frozen time is too far in the past
-THIS_YEAR = datetime.now().year
+THIS_YEAR = datetime.now(tz=UTC).year
 
 WORKFLOWS_MAIN = {
     82728346: "CI",
@@ -168,7 +168,7 @@ def use_mock_results(patch_settings, workflows_overrides=None):
         @functools.wraps(func)
         def wrapper_use_mock_results(*args, **kwargs):
             # Mock cache
-            keys = sorted(list(WORKFLOWS_MAIN.keys()))
+            keys = sorted(WORKFLOWS_MAIN.keys())
             mock_cache = {
                 f"{r['org']}/{r['repo']}": {
                     "version": "1",
@@ -268,10 +268,10 @@ def test_print_usage():
     )
 
 
-@pytest.mark.parametrize("command", ["show", "show --target all"])
+@pytest.mark.parametrize("command", (["show"], ["show", "--target", "all"]))
 def test_all_as_target(command):
-    args = jobs.get_command_line_parser().parse_args(command.split())
-    args = jobs.get_command_line_parser().parse_args("show --target all".split())
+    args = jobs.get_command_line_parser().parse_args(command)
+    args = jobs.get_command_line_parser().parse_args(["show", "--target", "all"])
 
     with patch("workspace.workflows.jobs.summarise_all") as mock_summarise_all:
         jobs.main(args)
@@ -280,7 +280,7 @@ def test_all_as_target(command):
 
 @pytest.mark.parametrize("org", ["opensafely-core", "osc"])
 def test_org_as_target(org):
-    args = jobs.get_command_line_parser().parse_args(f"show --target {org}".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--target", org])
 
     with patch("workspace.workflows.jobs.summarise_org") as mock_summarise_org:
         jobs.main(args)
@@ -300,8 +300,7 @@ def test_org_as_target(org):
     ],
 )
 def test_repo_as_target(repo, parsed):
-    args = jobs.get_command_line_parser().parse_args(f"show --target {repo}".split())
-
+    args = jobs.get_command_line_parser().parse_args(["show", "--target", repo])
     with patch("workspace.workflows.jobs.RepoWorkflowReporter") as MockReporter:
         jobs.main(args)
         MockReporter.assert_called_once_with(parsed)
@@ -309,7 +308,7 @@ def test_repo_as_target(repo, parsed):
 
 def test_website_repo_as_target():
     args = jobs.get_command_line_parser().parse_args(
-        "show --target http://bennett.ox.ac.uk".split()
+        ["show", "--target", "http://bennett.ox.ac.uk"]
     )
     with patch("workspace.workflows.jobs.RepoWorkflowReporter") as MockReporter:
         jobs.main(args)
@@ -384,7 +383,7 @@ def test_mixed_list_as_target():
 
 def test_catch_unhandled_error():
     args = jobs.get_command_line_parser().parse_args(
-        "show --target some/invalid/input".split()
+        ["show", "--target", "some/invalid/input"]
     )
     with patch(
         "workspace.workflows.jobs.report_invalid_target",
@@ -545,7 +544,7 @@ def test_some_workflows_not_found(mock_airlock_reporter, cache_path):
     assert len(mock_airlock_reporter.workflow_ids) == 7
     conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
     assert conclusion_statuses == {
-        **{key: "success" for key in WORKFLOWS_MAIN.keys()},
+        **{key: "success" for key in WORKFLOWS_MAIN},
         1234: "running",
         5678: "missing",
     }
@@ -569,7 +568,7 @@ def test_get_runs_beyond_last_retrieval_if_not_all_successful(
     assert len(mock_airlock_reporter.workflow_ids) == 6
     conclusion_statuses = {key: val[0] for key, val in conclusions.items()}
     assert conclusion_statuses == {
-        **{key: "success" for key in WORKFLOWS_MAIN.keys()},
+        **{key: "success" for key in WORKFLOWS_MAIN},
         1234: conclusion,
     }
 
@@ -688,11 +687,11 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji, mock_org_
         body=Path("tests/workspace/workflows.json").read_text(),
     )
     mock_conclusions.return_value = {
-        key: conclusion for key in sorted(list(WORKFLOWS_MAIN.keys()))
+        key: conclusion for key in sorted(WORKFLOWS_MAIN.keys())
     }
     status = f"{emoji} {reported}"
     args = jobs.get_command_line_parser().parse_args(
-        "show --target opensafely-core/airlock".split()
+        ["show", "--target", "opensafely-core/airlock"]
     )
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -734,7 +733,7 @@ def test_main_show_repo(mock_conclusions, conclusion, reported, emoji, mock_org_
 def test_main_show_org():
     # Call main for an organisation without skipping successful workflows
     # The failing repo should appear first
-    args = jobs.get_command_line_parser().parse_args("show --target osc".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--target", "osc"])
 
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -846,7 +845,7 @@ def test_main_show_list_of_repos():
 )
 def test_main_show_all():
     # Call main for all repos without skipping successful workflows
-    args = jobs.get_command_line_parser().parse_args("show".split())
+    args = jobs.get_command_line_parser().parse_args(["show"])
     blocks = json.loads(jobs.main(args))
     assert blocks == [
         {
@@ -899,7 +898,7 @@ def test_main_show_all():
 def test_main_show_all_skip_failures():
     # Call main for all repos without skipping successful workflows
     # Since all workflows in failing-repo are known to fail, it should be skipped entirely
-    args = jobs.get_command_line_parser().parse_args("show".split())
+    args = jobs.get_command_line_parser().parse_args(["show"])
     blocks = json.loads(jobs.main(args))
     assert blocks == [
         {  # Only the Team RAP section should appear
@@ -927,7 +926,7 @@ def test_main_show_all_skip_failures():
 def test_main_show_failed_empty():
     # Call main for all repos with skipping successful workflows
     # No failed workflows so state so
-    args = jobs.get_command_line_parser().parse_args("show --skip-successful".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--skip-successful"])
     blocks = json.loads(jobs.main(args))
     assert blocks == [
         {
@@ -954,7 +953,7 @@ def test_main_show_failed_empty():
 def test_main_show_failed_found():
     # Call main for all repos with skipping successful workflows
     # Only the failing repo should appear
-    args = jobs.get_command_line_parser().parse_args("show --skip-successful".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--skip-successful"])
 
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -1015,7 +1014,7 @@ def test_main_show_failed_found():
 def test_main_show_failed_skipped():
     # Call main for all repos with skipping successful workflows
     # Skip failures that are already known
-    args = jobs.get_command_line_parser().parse_args("show --skip-successful".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--skip-successful"])
 
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -1043,7 +1042,7 @@ def test_main_show_failed_skipped():
 def test_main_show_invalid_target():
     # Call main with an invalid org
     args = jobs.get_command_line_parser().parse_args(
-        "show --target invalid-org".split()
+        ["show", "--target", "invalid-org"]
     )
     blocks = json.loads(jobs.main(args))
     assert blocks == [
@@ -1099,7 +1098,7 @@ def test_main_show_invalid_target():
     },
 )
 def test_show_group():
-    args = jobs.get_command_line_parser().parse_args("show --group check-links".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--group", "check-links"])
     blocks = json.loads(jobs.main(args))
     assert blocks == [
         {  # Only 1 emoji should appear for each repo
@@ -1149,7 +1148,7 @@ def test_show_group():
     },
 )
 def test_show_group_not_found(_):
-    args = jobs.get_command_line_parser().parse_args("show --group unknown".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--group", "unknown"])
     blocks = json.loads(jobs.main(args))
     assert blocks == [
         {
@@ -1182,7 +1181,7 @@ def test_show_group_not_found(_):
     workflows_overrides={"excluded_repos": ["opensafely/excluded-repo"]},
 )
 def test_excluded_repo_skipped_in_team_summary():
-    args = jobs.get_command_line_parser().parse_args("show".split())
+    args = jobs.get_command_line_parser().parse_args(["show"])
     blocks = json.loads(jobs.main(args))
     rendered = json.dumps(blocks)
     assert "excluded-repo" not in rendered
@@ -1194,7 +1193,7 @@ def test_excluded_repo_skipped_in_team_summary():
 )
 def test_excluded_repo_rejected_as_explicit_target():
     args = jobs.get_command_line_parser().parse_args(
-        "show --target opensafely-core/airlock".split()
+        ["show", "--target", "opensafely-core/airlock"]
     )
     blocks = json.loads(jobs.main(args))
     assert "was not recognised" in blocks[0]["text"]["text"]
@@ -1212,7 +1211,7 @@ def test_excluded_repo_rejected_as_explicit_target():
     ]
 )
 def test_ambiguous_bare_repo_name_rejected():
-    args = jobs.get_command_line_parser().parse_args("show --target airlock".split())
+    args = jobs.get_command_line_parser().parse_args(["show", "--target", "airlock"])
     blocks = json.loads(jobs.main(args))
     assert blocks[0]["text"]["text"] == "airlock is ambiguous"
     body_text = blocks[1]["text"]["text"]

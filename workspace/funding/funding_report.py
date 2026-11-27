@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import UTC, datetime
 
 from workspace.utils.blocks import get_header_block, get_text_block
 from workspace.utils.spreadsheets import get_data_from_sheet
@@ -35,15 +35,17 @@ def main():
         added_date = row["Added/updated date"]
         if not added_date:  # pragma: no cover
             continue
-        added_date = datetime.strptime(added_date, "%d %b %Y").date()
-        days_since_added = (date.today() - added_date).days
+        added_date = datetime.strptime(added_date, "%d %b %Y").astimezone(UTC).date()
+        days_since_added = (datetime.now(tz=UTC).date() - added_date).days
 
         deadline_date = row["Deadline / expression of interest date"]
         if not deadline_date:  # pragma: no cover
             continue
         try:
-            deadline_date = datetime.strptime(deadline_date, "%d %b %Y").date()
-            days_to_deadline = (deadline_date - date.today()).days
+            deadline_date = (
+                datetime.strptime(deadline_date, "%d %b %Y").astimezone(UTC).date()
+            )
+            days_to_deadline = (deadline_date - datetime.now(tz=UTC).date()).days
         except ValueError:
             deadline_date = f"unknown date: {deadline_date}"
             days_to_deadline = 0

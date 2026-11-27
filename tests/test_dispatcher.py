@@ -189,7 +189,7 @@ def test_job_success_with_slack_exception():
 
     client = slack_web_client()
     # confirm that posting a message with the client raises an error
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         client.chat_postMessage(text="test", channel="channel")
 
     do_job(client, job)
@@ -801,9 +801,11 @@ def test_message_checker_matched_messages(support_type, support_channel, reactio
     assert requests_by_path["/api/search.messages"] == [
         {
             "query": [
-                f'"{keyword}" -has::{reaction}: -in:#{support_channel} '
-                f"-from:@{settings.SLACK_APP_USERNAME} -is:dm "
-                "after:2024-03-02"
+                (
+                    f'"{keyword}" -has::{reaction}: -in:#{support_channel} '
+                    f"-from:@{settings.SLACK_APP_USERNAME} -is:dm "
+                    "after:2024-03-02"
+                )
             ]
         }
         for keyword in keywords

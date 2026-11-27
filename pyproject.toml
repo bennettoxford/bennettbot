@@ -103,6 +103,9 @@ extend-select = [
 extend-ignore = [
   "E501",
   "E731",
+  # Ignore ruff's rule about blind exceptions; we catch these in various
+  # places deliberately, as they're handled and logged so users can see the job logs
+  "BLE001"
 ]
 
 [tool.ruff.lint.isort]
@@ -118,7 +121,7 @@ required-version = ">=0.13"
 
 [dependency-groups]
 dev = [
-  "ruff<=0.15.22",
+  "ruff<=0.17.6",
   "pre-commit<=4.7.0",
   "pytest<=9.2.0",
   "pytest-cov<=7.1.0",

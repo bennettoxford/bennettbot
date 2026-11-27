@@ -15,7 +15,7 @@ def hello_world_blocks():
 
 
 def hello_world_blocks_error():
-    raise Exception("An error was found!")
+    raise Exception("An error was found!")  # noqa: TRY002
 
 
 def long_code_output():

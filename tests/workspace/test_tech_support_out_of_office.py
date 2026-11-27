@@ -51,8 +51,10 @@ def test_out_of_office_off(config_path, config, message):
         ),
         (
             {"start": "3033-01-01", "end": "3033-01-01"},  # OOO scheduled
-            "Tech support out of office is currently OFF.\n"
-            "Scheduled out of office is from 3033-01-01 until 3033-01-01.",
+            (
+                "Tech support out of office is currently OFF.\n"
+                "Scheduled out of office is from 3033-01-01 until 3033-01-01."
+            ),
         ),
     ],
 )
@@ -114,7 +116,7 @@ def test_out_of_office_on_errors(config_path, start, end, message):
 )
 def test_out_of_office_on_invalid_dates(config_path, start, end):
     assert not config_path.exists()
-    with patch("workspace.techsupport.jobs.config_file", return_value=config_path):
+    with patch("workspace.techsupport.jobs.config_file", return_value=config_path):  # noqa: SIM117
         with pytest.raises(ValueError):
             out_of_office_on(start, end)
     assert not config_path.exists()

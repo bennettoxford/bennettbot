@@ -150,7 +150,7 @@ requests==2.34.2
     # via
     #   bennettbot
     #   google-api-core
-ruff==0.15.22
+ruff==0.17.6
 slack-bolt==1.30.0
     # via bennettbot
 slack-sdk==3.46.0
